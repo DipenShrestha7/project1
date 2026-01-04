@@ -1,13 +1,33 @@
 import "./index.css";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+
 import mountainImage from "./assets/mountain.jpg";
 
 const App = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [password, setPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [createSuccess, setCreateSuccess] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(isLogin ? "Logging in..." : "Creating account...");
+    if (password !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    } else {
+      alert(
+        isLogin
+          ? "Logging in..."
+          : "Account created successfully. Redirecting to login page..."
+      );
+    }
+    setCreateSuccess(true);
+    if (createSuccess) {
+      setIsLogin(true);
+    }
   };
 
   return (
@@ -71,12 +91,49 @@ const App = () => {
               required
             />
 
-            <input
-              type="password"
-              placeholder="Password"
-              className="w-full px-4 py-3 rounded-xl border border-sky-200 bg-sky-50/40 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-400 pr-12"
+                required
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-sky-600 text-sm hover:text-sky-800"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+
+            {!isLogin && (
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  required
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-sky-500 hover:text-sky-700"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"
@@ -91,7 +148,7 @@ const App = () => {
             {isLogin ? "New here?" : "Already have an account?"}{" "}
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-sky-700 font-medium hover:underline"
+              className="text-sky-700 font-medium hover:underline cursor-pointer"
             >
               {isLogin ? "Create one" : "Log in"}
             </button>

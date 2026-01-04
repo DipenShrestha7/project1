@@ -31,7 +31,7 @@ function authenticateUsersRoute(fastify) {
   });
 
   // VIEW USERS
-  fastify.get("/userview", async () => {
+  fastify.get("/users", async () => {
     const users = await UsersModel.findAll();
 
     return {

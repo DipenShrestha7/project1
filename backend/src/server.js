@@ -11,9 +11,9 @@ const start = async () => {
     await sequelize.sync();
 
     fastify.register(authenticateUsersRoutes, { prefix: "/api" });
-
-    await fastify.listen({ port: 9000 });
-    console.log("Server running on http://localhost:9000");
+    const port = process.env.PORT || 9000;
+    await fastify.listen({ port: port });
+    console.log(`Server running on http://localhost:${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
