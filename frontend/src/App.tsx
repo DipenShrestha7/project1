@@ -4,44 +4,80 @@ import { Eye, EyeOff } from "lucide-react";
 
 import mountainImage from "./assets/mountain.jpg";
 
+type User = {
+  fullName?: string;
+  email?: string;
+  password?: string;
+};
+
 const App = () => {
+  const [, setUser] = useState<User | null>(null);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const [password, setPassword] = useState("");
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [createSuccess, setCreateSuccess] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
+
+    if (!isLogin && password !== confirmPassword) {
       alert("Passwords do not match");
       return;
-    } else {
-      alert(
-        isLogin
-          ? "Logging in..."
-          : "Account created successfully. Redirecting to login page..."
-      );
     }
-    setCreateSuccess(true);
-    if (createSuccess) {
-      setIsLogin(true);
+    const url = isLogin
+      ? "http://localhost:9000/api/login"
+      : "http://localhost:9000/api/signup";
+
+    const body = isLogin
+      ? { email, password }
+      : { user_name: fullName, email, password };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Login failed");
+        return;
+      }
+      if (isLogin) {
+        alert("Logged in successfully");
+        location.href = "https://youtube.com";
+      } else {
+        setUser(body);
+        alert("Account created successfully. Redirecting to login page...");
+        setIsLogin(true); // switch back to login
+        setPassword("");
+        setConfirmPassword("");
+      }
+      console.log("Success:", data);
+    } catch (error) {
+      console.error("Error during fetch:", error);
     }
   };
 
   return (
     <div className="min-h-screen flex">
       {/* Left Image Section */}
-      <div className="hidden md:block w-1/2 md:w-[50%] relative">
+      <div className="hidden md:block w-1/2 relative">
         <img
           src={mountainImage}
           alt="Travel background"
           className="absolute inset-0 w-full h-full object-cover object-[50%_30%]"
         />
-        <div className="absolute inset-0 bg-black/20"></div>
+        <div className="absolute inset-0 bg-black/20" />
         <div className="relative z-10 h-full flex items-center justify-center px-10">
-          <h2 className="text-white text-4xl font-semibold leading-tight tracking-wide text-center">
+          <h2 className="text-white text-4xl font-semibold text-center">
             Explore places.
             <br />
             Create memories.
@@ -50,23 +86,19 @@ const App = () => {
       </div>
 
       <div className="hidden md:block absolute inset-y-0 left-[50%] w-40 pointer-events-none z-20">
-        <div className="h-full w-full bg-linear-to-r from-black/20 via-black/5 to-transparent"></div>
+        <div className="h-full w-full bg-linear-to-r from-black/20 via-black/5 to-transparent" />
       </div>
 
       {/* Right Form Section */}
-      <div className="w-full md:w-[50%] relative flex items-center justify-center bg-[#f4f9ff] overflow-hidden">
-        {/* Soft background layers */}
-        <div className="absolute -top-32 -right-32 w-100 h-100 rounded-full bg-sky-200/40 blur-3xl"></div>
-        <div className="absolute -bottom-32 -left-32 w-100 h-100 rounded-full bg-blue-300/30 blur-3xl"></div>
+      <div className="w-full md:w-1/2 flex items-center justify-center bg-[#f4f9ff] relative overflow-hidden">
+        <div className="absolute -top-32 -right-32 w-100 h-100 rounded-full bg-sky-200/40 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-100 h-100 rounded-full bg-blue-300/30 blur-3xl" />
 
-        {/* Auth Card */}
-        <div className="relative w-full max-w-md bg-white rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.06)] p-10">
-          {/* Accent line */}
-          <div className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl bg-sky-600"></div>
+        <div className="relative w-full max-w-md bg-white rounded-3xl p-10 shadow-[0_20px_60px_rgba(0,0,0,0.06)]">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-sky-600 rounded-t-3xl" />
 
-          {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-semibold text-sky-900 tracking-tight">
+            <h1 className="text-3xl font-semibold text-sky-900">
               {isLogin ? "Continue your journey" : "Start your journey"}
             </h1>
             <p className="text-sky-600 mt-2 text-sm">
@@ -79,7 +111,9 @@ const App = () => {
               <input
                 type="text"
                 placeholder="Full name"
-                className="w-full px-4 py-3 rounded-xl border border-sky-200 bg-sky-50/40 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-sky-200 bg-sky-50/40 focus:ring-2 focus:ring-sky-500"
                 required
               />
             )}
@@ -87,7 +121,9 @@ const App = () => {
             <input
               type="email"
               placeholder="Email address"
-              className="w-full px-4 py-3 rounded-xl border border-sky-200 bg-sky-50/40 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-sky-200 bg-sky-50/40 focus:ring-2 focus:ring-sky-500"
               required
             />
 
@@ -97,14 +133,13 @@ const App = () => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-400 pr-12"
+                className="w-full px-4 py-3 pr-12 rounded-xl border border-sky-200 focus:ring-2 focus:ring-sky-400"
                 required
               />
-
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-sky-600 text-sm hover:text-sky-800"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-sky-600"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -117,14 +152,13 @@ const App = () => {
                   placeholder="Confirm password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 rounded-xl border border-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-sky-200 focus:ring-2 focus:ring-sky-400"
                   required
                 />
-
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-sky-500 hover:text-sky-700"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-sky-600"
                 >
                   {showConfirmPassword ? (
                     <EyeOff size={20} />
@@ -137,18 +171,17 @@ const App = () => {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-sky-600 text-white font-medium hover:bg-sky-700 transition shadow-lg shadow-sky-600/30"
+              className="w-full py-3 rounded-xl bg-sky-600 text-white font-medium hover:bg-sky-700 transition"
             >
               {isLogin ? "Log in" : "Create account"}
             </button>
           </form>
 
-          {/* Footer */}
           <p className="text-center text-sky-600 mt-6 text-sm">
             {isLogin ? "New here?" : "Already have an account?"}{" "}
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-sky-700 font-medium hover:underline cursor-pointer"
+              className="text-sky-700 font-medium hover:underline"
             >
               {isLogin ? "Create one" : "Log in"}
             </button>

@@ -1,9 +1,14 @@
-import sequelize from "./src/config/db.js";
+import sequelize from "./config/db.js";
+import fastifyCors from "@fastify/cors";
 import Fastify from "fastify";
-import authenticateUsersRoutes from "./src/routes/AuthenticateUsersRoute.js";
+import authenticateUsersRoutes from "./routes/AuthenticateUsersRoute.js";
 import "dotenv/config";
 
 const fastify = Fastify({ logger: true });
+
+fastify.register(fastifyCors, {
+  origin: "http://localhost:5173",
+});
 
 const start = async () => {
   try {
