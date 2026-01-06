@@ -18,7 +18,11 @@ const App = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loginError, setLoginError] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
+
   const navigate = useNavigate();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -46,16 +50,16 @@ const App = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message || "Login failed");
+        setLoginError(false);
+        // alert(data.message || "Login failed");
         return;
       }
       if (isLogin) {
-        alert("Logged in successfully");
+        setSignupSuccess(true);
         navigate("/dashboard");
       } else {
         setUser(body);
-        alert("Account created successfully. Redirecting to login page...");
-        setIsLogin(true); // switch back to login
+        setSignupSuccess(true);
         setPassword("");
         setConfirmPassword("");
       }
@@ -175,11 +179,24 @@ const App = () => {
               {isLogin ? "Log in" : "Create account"}
             </button>
           </form>
-
+          {isLogin && loginError && (
+            <div className="bg-red-300 text-center border mt-6 py-2.5 border-red-400 text-white rounded-md">
+              Incorrect Email or Password
+            </div>
+          )}
+          {!isLogin && signupSuccess && (
+            <div className="bg-green-300 text-center border mt-6 py-2.5 border-green-400 text-white rounded-md">
+              Account created successfully. Please log in.
+            </div>
+          )}
           <p className="text-center text-sky-600 mt-6 text-sm">
             {isLogin ? "New here?" : "Already have an account?"}{" "}
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setLoginError(false);
+                setSignupSuccess(false);
+              }}
               className="text-sky-700 font-medium hover:underline"
             >
               {isLogin ? "Create one" : "Log in"}

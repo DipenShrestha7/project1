@@ -1,171 +1,156 @@
 import { useState } from "react";
-import { Users, MapPin, Camera, Calendar } from "lucide-react";
+import { MapPin, Camera } from "lucide-react";
 
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState("users");
-
-  const tabs = [
-    { key: "users", label: "Users", icon: <Users size={20} /> },
-    { key: "cities", label: "Cities", icon: <MapPin size={20} /> },
-    { key: "locations", label: "Locations", icon: <MapPin size={20} /> },
-    { key: "history", label: "Travel History", icon: <Calendar size={20} /> },
-    { key: "images", label: "Images", icon: <Camera size={20} /> },
-  ];
-
-  // Dummy data for now
-  const data = {
-    users: [
-      { id: 1, name: "Alice", email: "alice@gmail.com" },
-      { id: 2, name: "Bob", email: "bob@gmail.com" },
-    ],
-    cities: [
-      { id: 1, name: "Kathmandu", description: "Capital of Nepal" },
-      { id: 2, name: "Pokhara", description: "Tourist city" },
-    ],
-    locations: [
-      {
-        id: 1,
-        name: "Pashupatinath",
-        city: "Kathmandu",
-        lat: 27.71,
-        long: 85.324,
-      },
-      {
-        id: 2,
-        name: "Fewa Lake",
-        city: "Pokhara",
-        lat: 28.2096,
-        long: 83.9311,
-      },
-    ],
-    history: [
-      {
-        id: 1,
-        user: "Alice",
-        location: "Pashupatinath",
-        date: "2026-01-01",
-        rating: 5,
-      },
-      {
-        id: 2,
-        user: "Bob",
-        location: "Fewa Lake",
-        date: "2026-01-02",
-        rating: 4,
-      },
-    ],
-    images: [
-      {
-        id: 1,
-        location: "Pashupatinath",
-        url: "https://picsum.photos/200",
-        description: "Temple view",
-      },
-      {
-        id: 2,
-        location: "Fewa Lake",
-        url: "https://picsum.photos/200",
-        description: "Lake view",
-      },
-    ],
+  const user = {
+    name: "Alice Johnson",
+    email: "alice@gmail.com",
   };
 
+  const cities = [
+    { id: 1, name: "Kathmandu" },
+    { id: 2, name: "Pokhara" },
+  ];
+
+  const locations = [
+    {
+      id: 1,
+      name: "Pashupatinath",
+      cityId: 1,
+    },
+    {
+      id: 2,
+      name: "Swayambhunath",
+      cityId: 1,
+    },
+    {
+      id: 3,
+      name: "Fewa Lake",
+      cityId: 2,
+    },
+  ];
+
+  const images = [
+    {
+      id: 1,
+      locationId: 1,
+      url: "https://picsum.photos/400/300?1",
+    },
+    {
+      id: 2,
+      locationId: 1,
+      url: "https://picsum.photos/400/300?2",
+    },
+    {
+      id: 3,
+      locationId: 3,
+      url: "https://picsum.photos/400/300?3",
+    },
+  ];
+
+  const [selectedCity, setSelectedCity] = useState<number | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+
+  const filteredLocations = locations.filter((l) => l.cityId === selectedCity);
+
+  const filteredImages = images.filter(
+    (img) => img.locationId === selectedLocation
+  );
+
   return (
-    <div className="min-h-screen flex bg-[#f4f9ff]">
-      {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg rounded-r-3xl p-6 flex flex-col">
-        <h1 className="text-2xl font-bold text-sky-900 mb-8 text-center">
-          Travel Dashboard
-        </h1>
-        <nav className="flex flex-col gap-3">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition
-                ${
-                  activeTab === tab.key
-                    ? "bg-sky-600 text-white"
-                    : "text-sky-700 hover:bg-sky-100"
+    <div className="min-h-screen flex bg-slate-50">
+      <div className="w-72 bg-white shadow-xl rounded-r-3xl p-6 flex flex-col gap-8">
+        <div className="flex items-center gap-4 bg-sky-600 text-white rounded-2xl p-4">
+          <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold">
+            <img
+              src="https://i.pravatar.cc/100"
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <div className="leading-tight">
+            <h2 className="text-base font-semibold">{user.name}</h2>
+            <p className="text-sm opacity-90">{user.email}</p>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sky-900 font-semibold mb-3">Cities</h3>
+          <div className="flex flex-col gap-2">
+            {cities.map((city) => (
+              <button
+                key={city.id}
+                onClick={() => {
+                  setSelectedCity(city.id);
+                  setSelectedLocation(null);
+                }}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
+                  selectedCity === city.id
+                    ? "bg-sky-100 text-sky-700"
+                    : "hover:bg-slate-100 text-slate-700"
                 }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+              >
+                <MapPin size={18} />
+                {city.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Main content */}
       <div className="flex-1 p-10 overflow-auto">
-        <h2 className="text-3xl font-semibold text-sky-900 mb-6 capitalize">
-          {activeTab}
-        </h2>
-
-        {/* Render content based on activeTab */}
-        {activeTab === "users" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {data.users.map((user) => (
-              <div key={user.id} className="p-6 bg-white rounded-2xl shadow-md">
-                <h3 className="font-bold text-sky-800">{user.name}</h3>
-                <p className="text-sky-600">{user.email}</p>
-              </div>
-            ))}
+        {!selectedCity && (
+          <div className="h-full flex items-center justify-center text-slate-400 text-xl">
+            Select a city to explore locations
           </div>
         )}
 
-        {activeTab === "cities" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {data.cities.map((city) => (
-              <div key={city.id} className="p-6 bg-white rounded-2xl shadow-md">
-                <h3 className="font-bold text-sky-800">{city.name}</h3>
-                <p className="text-sky-600">{city.description}</p>
-              </div>
-            ))}
+        {selectedCity && !selectedLocation && (
+          <div>
+            <h2 className="text-3xl font-semibold text-sky-900 mb-6">
+              Locations
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {filteredLocations.map((loc) => (
+                <div
+                  key={loc.id}
+                  onClick={() => setSelectedLocation(loc.id)}
+                  className="cursor-pointer bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transition"
+                >
+                  <h3 className="text-lg font-semibold text-sky-800">
+                    {loc.name}
+                  </h3>
+                  <p className="text-slate-500 mt-1">Tap to view images</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {activeTab === "locations" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {data.locations.map((loc) => (
-              <div key={loc.id} className="p-6 bg-white rounded-2xl shadow-md">
-                <h3 className="font-bold text-sky-800">{loc.name}</h3>
-                <p className="text-sky-600">{loc.city}</p>
-                <p className="text-sky-500 text-sm">
-                  Lat: {loc.lat}, Long: {loc.long}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+        {selectedLocation && (
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <Camera className="text-sky-600" />
+              <h2 className="text-3xl font-semibold text-sky-900">
+                Location Images
+              </h2>
+            </div>
 
-        {activeTab === "history" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {data.history.map((h) => (
-              <div key={h.id} className="p-6 bg-white rounded-2xl shadow-md">
-                <h3 className="font-bold text-sky-800">{h.user}</h3>
-                <p className="text-sky-600">{h.location}</p>
-                <p className="text-sky-500 text-sm">
-                  Date: {h.date} | Rating: {h.rating}/5
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+            {filteredImages.length === 0 && (
+              <p className="text-slate-500">No images available</p>
+            )}
 
-        {activeTab === "images" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data.images.map((img) => (
-              <div key={img.id} className="p-4 bg-white rounded-2xl shadow-md">
-                <img
-                  src={img.url}
-                  alt={img.description}
-                  className="w-full h-48 object-cover rounded-xl mb-2"
-                />
-                <h3 className="font-bold text-sky-800">{img.location}</h3>
-                <p className="text-sky-600 text-sm">{img.description}</p>
-              </div>
-            ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredImages.map((img) => (
+                <div
+                  key={img.id}
+                  className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition"
+                >
+                  <img src={img.url} className="w-full h-56 object-cover" />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
