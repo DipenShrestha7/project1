@@ -1,8 +1,60 @@
 import { useState, useEffect } from "react";
 import { MapPin, Sun, Moon, Search, Camera } from "lucide-react";
+import profileImage from "../assets/wall23.png";
+
+type User = {
+  id?: number;
+  name?: string;
+  email?: string;
+};
 
 const Dashboard = () => {
-  const user = { name: "Alice Johnson", email: "alice@gmail.com" };
+  const [User, setUser] = useState<User>();
+  useEffect(() => {
+    const getData = async () => {
+      try {
+        const response = await fetch("http://localhost:9000/api/users");
+        const data = await response.json();
+        const user = data.users[0];
+        console.log(user);
+        setUser({ id: user.user_id, name: user.user_name, email: user.email });
+        console.log({
+          id: user.user_id,
+          name: user.user_name,
+          email: user.email,
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    getData();
+  }, []);
+
+  // const user = { name: "Alice Johnson", email: "alice@gmail.com" };
+
+  const [, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(profileImage);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImage(file);
+    setPreview(URL.createObjectURL(file));
+    console.log(file);
+    const formData = new FormData();
+    formData.append("photo", file);
+
+    try {
+      const response = await fetch(`http://localhost:9000/api/dashboard`, {
+        method: "POST",
+        body: formData,
+      });
+      console.log(await response.json());
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const cities = [
     {
@@ -83,15 +135,32 @@ const Dashboard = () => {
       <div className="w-72 bg-white dark:bg-gray-800 shadow-xl rounded-r-3xl p-6 flex flex-col gap-8 transition-colors">
         <div className="flex items-center gap-4 bg-sky-600 text-white rounded-2xl p-4">
           <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold">
-            <img
-              src="https://i.pravatar.cc/100"
-              alt="Profile"
-              className="w-full h-full object-cover"
+            <input
+              type="file"
+              accept="image"
+              className="hidden"
+              id="fileInput"
+              onChange={handleFile}
             />
+            {preview ? (
+              <img
+                src={preview}
+                alt="preview"
+                className="w-40 h-40 rounded-lg object-cover cursor-pointer"
+                onClick={() => document.getElementById("fileInput")?.click()}
+              />
+            ) : (
+              <div
+                onClick={() => document.getElementById("fileInput")?.click()}
+                className="w-40 h-40 border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
+              >
+                <span className="text-4xl text-gray-500 p-4 mb-2">+</span>
+              </div>
+            )}
           </div>
           <div className="leading-tight">
-            <h2 className="text-base font-semibold">{user.name}</h2>
-            <p className="text-sm opacity-90">{user.email}</p>
+            <h2 className="text-base font-semibold">{User?.name}</h2>
+            <p className="text-sm opacity-90">{User?.email}</p>
           </div>
         </div>
 

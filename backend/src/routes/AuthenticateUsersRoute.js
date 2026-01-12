@@ -1,6 +1,9 @@
 import UsersModel from "../models/UsersModel.js";
+import SiteUserModel from "../models/SiteUserModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import path from "path";
+import fs from "fs";
 
 function authenticateUsersRoute(fastify) {
   // SIGNUP
@@ -71,6 +74,25 @@ function authenticateUsersRoute(fastify) {
         message: "Login successful",
         token,
       };
+    } catch (err) {
+      console.error(err);
+      return reply.code(500).send({ error: "Internal Server Error" });
+    }
+  });
+
+  fastify.post("/dashboard", async (req, reply) => {
+    try {
+      const data = await req.file(); // get uploaded file
+      const uploadPath = path.join(process.cwd(), "uploads", data.filename);
+      const writeStream = fs.createWriteStream(uploadPath);
+      await data.file.pipe(writeStream);
+
+      // Save path in DB
+      const newImage = await SiteUserModel.create({
+        path: `/uploads/${data.filename}`,
+      });
+
+      return { message: "File uploaded", file: newImage };
     } catch (err) {
       console.error(err);
       return reply.code(500).send({ error: "Internal Server Error" });
