@@ -67,7 +67,7 @@ function authenticateUsersRoute(fastify) {
       const token = jwt.sign(
         { user_id: user.user_id },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" }
+        { expiresIn: "7d" },
       );
 
       return {
@@ -80,7 +80,31 @@ function authenticateUsersRoute(fastify) {
     }
   });
 
-  fastify.post("/dashboard", async (req, reply) => {
+  fastify.get("/dashboard", async (req, reply) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return reply.code(401).send({ message: "No token provided" });
+    }
+    const token = authHeader.split(" ")[1];
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      const user = await UsersModel.findOne({
+        where: { user_id: decoded.user_id },
+      });
+
+      return {
+        id: user.user_id,
+        name: user.user_name,
+        email: user.email,
+      };
+    } catch (err) {
+      console.error(err);
+      return reply.code(500).send({ error: "Invalid token" });
+    }
+  });
+
+  fastify.post("/dashboard/upload", async (req, reply) => {
     try {
       const data = await req.file(); // get uploaded file
       const uploadPath = path.join(process.cwd(), "uploads", data.filename);
@@ -92,10 +116,13 @@ function authenticateUsersRoute(fastify) {
         path: `/uploads/${data.filename}`,
       });
 
-      return { message: "File uploaded", file: newImage };
+      return {
+        message: "File uploaded",
+        file: newImage,
+      };
     } catch (err) {
       console.error(err);
-      return reply.code(500).send({ error: "Internal Server Error" });
+      return reply.code(500).send({ error: "Internal server error" });
     }
   });
 }

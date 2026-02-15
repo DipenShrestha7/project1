@@ -26,10 +26,6 @@ const App = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isLogin && password !== confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
     const url = isLogin
       ? "http://localhost:9000/api/login"
       : "http://localhost:9000/api/signup";
@@ -48,13 +44,24 @@ const App = () => {
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        setLoginError(false);
-        // alert(data.message || "Login failed");
-        return;
-      }
       if (isLogin) {
+        if (!response.ok) {
+          alert("Email or Password incorrect");
+          setLoginError(false);
+          // alert(data.message || "Login failed");
+          return;
+        }
+      } else {
+        if (!response.ok) {
+          alert("Email already exists. Please use a new one !!");
+          setLoginError(false);
+          // alert(data.message || "Login failed");
+          return;
+        }
+      }
+      console.log("Success:", data);
+      if (isLogin) {
+        localStorage.setItem("token", data.token);
         setSignupSuccess(true);
         navigate("/dashboard");
       } else {
@@ -63,7 +70,6 @@ const App = () => {
         setPassword("");
         setConfirmPassword("");
       }
-      console.log("Success:", data);
     } catch (error) {
       console.error("Error during fetch:", error);
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { MapPin, Sun, Moon, Search, Camera } from "lucide-react";
 import profileImage from "../assets/wall23.png";
+import { useNavigate } from "react-router-dom";
 
 type User = {
   id?: number;
@@ -10,27 +11,34 @@ type User = {
 
 const Dashboard = () => {
   const [User, setUser] = useState<User>();
+  const navigate = useNavigate();
   useEffect(() => {
-    const getData = async () => {
+    const fetchDashboard = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Not logged in");
+        navigate("/login");
+      }
       try {
-        const response = await fetch("http://localhost:9000/api/users");
-        const data = await response.json();
-        const user = data.users[0];
-        console.log(user);
-        setUser({ id: user.user_id, name: user.user_name, email: user.email });
-        console.log({
-          id: user.user_id,
-          name: user.user_name,
-          email: user.email,
+        const response = await fetch("http://localhost:9000/api/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
+        if (!response.ok) {
+          navigate("/login");
+          return;
+        }
+        const data = await response.json();
+        setUser(data);
+        console.log(data);
       } catch (err) {
         console.error(err);
       }
     };
-    getData();
-  }, []);
 
-  // const user = { name: "Alice Johnson", email: "alice@gmail.com" };
+    fetchDashboard();
+  }, [navigate]);
 
   const [, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(profileImage);
@@ -46,10 +54,13 @@ const Dashboard = () => {
     formData.append("photo", file);
 
     try {
-      const response = await fetch(`http://localhost:9000/api/dashboard`, {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `http://localhost:9000/api/dashboard/upload`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
       console.log(await response.json());
     } catch (err) {
       console.error(err);
@@ -123,7 +134,7 @@ const Dashboard = () => {
 
   const filteredLocations = locations.filter((l) => l.cityId === selectedCity);
   const filteredImages = images.filter(
-    (img) => img.locationId === selectedLocation
+    (img) => img.locationId === selectedLocation,
   );
 
   const currentCity = cities.find((c) => c.id === selectedCity);
@@ -235,7 +246,7 @@ const Dashboard = () => {
                     className="border-0 rounded-xl"
                     loading="lazy"
                     src={`https://www.google.com/maps?q=${encodeURIComponent(
-                      currentCity.name
+                      currentCity.name,
                     )}&output=embed`}
                   />
                 )}
