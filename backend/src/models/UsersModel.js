@@ -26,10 +26,14 @@ const UsersModel = sequelize.define(
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
+    profile_image: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     timestamps: false,
-  }
+  },
 );
 
 export default UsersModel;

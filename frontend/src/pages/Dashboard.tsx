@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { MapPin, Sun, Moon, Search, Camera } from "lucide-react";
-import profileImage from "../assets/wall23.png";
 import { useNavigate } from "react-router-dom";
 
 type User = {
@@ -12,6 +11,7 @@ type User = {
 const Dashboard = () => {
   const [User, setUser] = useState<User>();
   const navigate = useNavigate();
+  const [preview, setPreview] = useState<string | null>(null);
   useEffect(() => {
     const fetchDashboard = async () => {
       const token = localStorage.getItem("token");
@@ -31,7 +31,9 @@ const Dashboard = () => {
         }
         const data = await response.json();
         setUser(data);
+        setPreview(`http://localhost:9000${data.profile_image}`);
         console.log(data);
+        console.log(`http://localhost:9000${data.profile_image}`);
       } catch (err) {
         console.error(err);
       }
@@ -39,9 +41,9 @@ const Dashboard = () => {
 
     fetchDashboard();
   }, [navigate]);
+  console.log(preview);
 
   const [, setImage] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(profileImage);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,10 +56,15 @@ const Dashboard = () => {
     formData.append("photo", file);
 
     try {
+      const token = localStorage.getItem("token");
+
       const response = await fetch(
         `http://localhost:9000/api/dashboard/upload`,
         {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         },
       );
@@ -139,6 +146,14 @@ const Dashboard = () => {
 
   const currentCity = cities.find((c) => c.id === selectedCity);
   const currentLocation = locations.find((l) => l.id === selectedLocation);
+
+  const LogOut = () => {
+    const confirmLogout = window.confirm("Are you sure you want to logout?");
+    if (confirmLogout) {
+      localStorage.removeItem("token");
+      navigate("/login");
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900 text-slate-900 dark:text-slate-200 transition-colors">
@@ -346,6 +361,14 @@ const Dashboard = () => {
         className="fixed bottom-6 left-6 p-3 bg-sky-600 text-white rounded-full shadow-lg hover:bg-sky-700 transition z-50"
       >
         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+      <button
+        onClick={() => {
+          LogOut();
+        }}
+        className="fixed bottom-6 left-40 px-3 py-2.5 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition z-50"
+      >
+        Log Out
       </button>
     </div>
   );

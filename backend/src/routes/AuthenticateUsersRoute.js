@@ -1,5 +1,4 @@
 import UsersModel from "../models/UsersModel.js";
-import SiteUserModel from "../models/SiteUserModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import path from "path";
@@ -97,6 +96,7 @@ function authenticateUsersRoute(fastify) {
         id: user.user_id,
         name: user.user_name,
         email: user.email,
+        profile_image: user.profile_image || null,
       };
     } catch (err) {
       console.error(err);
@@ -106,23 +106,31 @@ function authenticateUsersRoute(fastify) {
 
   fastify.post("/dashboard/upload", async (req, reply) => {
     try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return reply.code(401).send({ message: "No token provided" });
+      }
+
       const data = await req.file(); // get uploaded file
       const uploadPath = path.join(process.cwd(), "uploads", data.filename);
       const writeStream = fs.createWriteStream(uploadPath);
       await data.file.pipe(writeStream);
 
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
       // Save path in DB
-      const newImage = await SiteUserModel.create({
-        path: `/uploads/${data.filename}`,
-      });
+      await UsersModel.update(
+        { profile_image: `/uploads/${data.filename}` },
+        { where: { user_id: decoded.user_id } },
+      );
 
       return {
-        message: "File uploaded",
-        file: newImage,
+        message: "Image added successfully",
       };
     } catch (err) {
       console.error(err);
-      return reply.code(500).send({ error: "Internal server error" });
+      return reply.code(500).send({ error: err });
     }
   });
 }
