@@ -79,8 +79,6 @@ const Dashboard = () => {
       id: 1,
       name: "Kathmandu",
       description: "The capital city of Nepal, known for temples and culture.",
-      lat: 27.7103,
-      lng: 85.3222,
     },
     {
       id: 2,
@@ -95,24 +93,18 @@ const Dashboard = () => {
       name: "Pashupatinath",
       cityId: 1,
       description: "One of the holiest Hindu temples in Nepal.",
-      lat: 27.7105,
-      lng: 85.3488,
     },
     {
       id: 2,
       name: "Swayambhunath",
       cityId: 1,
       description: "Ancient religious complex atop a hill in Kathmandu.",
-      lat: 27.7149,
-      lng: 85.2904,
     },
     {
       id: 3,
       name: "Fewa Lake",
       cityId: 2,
       description: "Beautiful lake in Pokhara with boating and mountain views.",
-      lat: 28.2154,
-      lng: 83.9453,
     },
   ];
 
@@ -125,8 +117,11 @@ const Dashboard = () => {
   const [selectedCity, setSelectedCity] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem("darkMode") === "true";
+    const saved = localStorage.getItem("darkMode");
+    if (saved === "true") return true;
+    return false;
   });
+
   const [searchCity, setSearchCity] = useState("");
   const filteredCities = cities.filter((city) => {
     return city.name.toLowerCase().includes(searchCity.toLowerCase());
@@ -248,25 +243,6 @@ const Dashboard = () => {
             <p className="mb-6 text-slate-700 dark:text-slate-300">
               {currentCity?.description}
             </p>
-            <div className="w-1/3 mb-5">
-              <div
-                key={currentCity?.id}
-                className="border rounded-lg shadow-lg overflow-hidden"
-              >
-                {currentCity && (
-                  <iframe
-                    title={currentCity.name}
-                    width="100%"
-                    height="300"
-                    className="border-0 rounded-xl"
-                    loading="lazy"
-                    src={`https://www.google.com/maps?q=${encodeURIComponent(
-                      currentCity.name,
-                    )}&output=embed`}
-                  />
-                )}
-              </div>
-            </div>
 
             <h3 className="text-2xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
               Locations
@@ -309,22 +285,7 @@ const Dashboard = () => {
                 {currentLocation?.description}
               </p>
 
-              <div className="py-4 w-1/3">
-                <div
-                  key={currentLocation?.id}
-                  className="border rounded-lg shadow-lg overflow-hidden"
-                >
-                  <iframe
-                    title={currentLocation?.name}
-                    width="100%"
-                    height="300"
-                    className="border-0"
-                    loading="lazy"
-                    allowFullScreen
-                    src={`https://www.google.com/maps?q=${currentLocation?.lat},${currentLocation?.lng}&z=14&output=embed`}
-                  ></iframe>
-                </div>
-              </div>
+              <div className="py-4 w-1/3"></div>
               <div className="flex items-center gap-2 mb-6">
                 <Camera className="text-sky-600" />
                 <h2 className="text-3xl font-semibold text-sky-900">

@@ -4,6 +4,7 @@ import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import authenticateUsersRoutes from "./routes/AuthenticateUsersRoute.js";
+import authenticateCityLocationRoutes from "./routes/AuthenticateCity&LocationRoute.js";
 import "dotenv/config";
 import path from "path";
 import fs from "fs";
@@ -12,6 +13,7 @@ const fastify = Fastify({ logger: true });
 
 fastify.register(fastifyCors, {
   origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
 });
 
 fastify.register(multipart);
@@ -26,6 +28,7 @@ const start = async () => {
     await sequelize.sync();
 
     fastify.register(authenticateUsersRoutes, { prefix: "/api" });
+    fastify.register(authenticateCityLocationRoutes, { prefix: "/api" });
     const port = process.env.PORT || 9000;
     await fastify.listen({ port: port });
     console.log(`Server running on http://localhost:${port}`);
