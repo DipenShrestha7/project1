@@ -92,11 +92,17 @@ function authenticateCityLocationRoutes(fastify) {
 
   //Location
   fastify.post("/admin/location", async (request, reply) => {
-    const { location_name, description, city_id, latitude, longitude } =
+    let { location_name, description, city_id, latitude, longitude } =
       request.body;
+    if (latitude == "") {
+      latitude = null;
+    }
+    if (longitude == "") {
+      longitude = null;
+    }
     try {
       const location = await LocationsModel.create({
-        location_name: normalize(location_name),
+        location_name: location_name,
         description,
         city_id,
         latitude,
@@ -151,12 +157,19 @@ function authenticateCityLocationRoutes(fastify) {
 
   fastify.put("/admin/location/:location_id", async (request, reply) => {
     const { location_id } = request.params;
-    const { location_name, description, latitude, longitude } = request.body;
+    let { location_name, description, latitude, longitude } = request.body;
+
+    if (latitude == "") {
+      latitude = null;
+    }
+    if (longitude == "") {
+      longitude = null;
+    }
 
     try {
       const updated_location = await LocationsModel.update(
         {
-          location_name: normalize(location_name),
+          location_name: location_name,
           description,
           latitude,
           longitude,

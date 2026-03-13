@@ -20,15 +20,15 @@ const LocationsModel = sequelize.define(
     },
     description: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     latitude: {
       type: DataTypes.DECIMAL(9, 6),
-      allowNull: false,
+      allowNull: true,
     },
     longitude: {
       type: DataTypes.DECIMAL(9, 6),
-      allowNull: false,
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,

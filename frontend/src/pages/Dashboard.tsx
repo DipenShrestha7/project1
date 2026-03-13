@@ -8,10 +8,89 @@ type User = {
   email?: string;
 };
 
+type City = {
+  city_id: number;
+  city_name: string;
+  description: string;
+  created_at: string;
+};
+
+type Cities = {
+  id: number;
+  name?: string;
+  description?: string;
+};
+
+type Location = {
+  location_id: number;
+  location_name: string;
+  description: string;
+  city_id: number;
+  created_at: string;
+  latitude: number | string;
+  longitude: number | string;
+};
+
+type Locations = {
+  id: number;
+  name: string;
+  description: string;
+  city_id: number;
+  latitude: number | string;
+  longitude: number | string;
+};
+
 const Dashboard = () => {
   const [User, setUser] = useState<User>();
+  const [Cities, setCities] = useState<Cities[]>([]);
+  const [Locations, setLocations] = useState<Locations[]>([]);
   const navigate = useNavigate();
   const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCityData = async () => {
+      try {
+        const response = await fetch("http://localhost:9000/api/admin/cities");
+        const data: City[] = await response.json();
+        console.log(data);
+        const formatted: Cities[] = data.map((item) => ({
+          id: item.city_id,
+          name: item.city_name,
+          description: item.description,
+        }));
+        setCities(formatted);
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    fetchCityData();
+  }, []);
+  console.log(Cities);
+
+  useEffect(() => {
+    const fetchLocationData = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:9000/api/admin/locations",
+        );
+        const data: Location[] = await response.json();
+        console.log(data);
+        const formatted: Locations[] = data.map((item) => ({
+          id: item.city_id,
+          name: item.location_name,
+          description: item.description,
+          city_id: item.city_id,
+          latitude: item.latitude,
+          longitude: item.longitude,
+        }));
+        setLocations(formatted);
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    fetchLocationData();
+  }, []);
+
   useEffect(() => {
     const fetchDashboard = async () => {
       const token = localStorage.getItem("token");
@@ -32,16 +111,12 @@ const Dashboard = () => {
         const data = await response.json();
         setUser(data);
         setPreview(`http://localhost:9000${data.profile_image}`);
-        console.log(data);
-        console.log(`http://localhost:9000${data.profile_image}`);
       } catch (err) {
         console.error(err);
       }
     };
-
     fetchDashboard();
   }, [navigate]);
-  console.log(preview);
 
   const [, setImage] = useState<File | null>(null);
 
@@ -74,40 +149,6 @@ const Dashboard = () => {
     }
   };
 
-  const cities = [
-    {
-      id: 1,
-      name: "Kathmandu",
-      description: "The capital city of Nepal, known for temples and culture.",
-    },
-    {
-      id: 2,
-      name: "Pokhara",
-      description: "Famous for lakes, mountains, and adventure tourism.",
-    },
-  ];
-
-  const locations = [
-    {
-      id: 1,
-      name: "Pashupatinath",
-      cityId: 1,
-      description: "One of the holiest Hindu temples in Nepal.",
-    },
-    {
-      id: 2,
-      name: "Swayambhunath",
-      cityId: 1,
-      description: "Ancient religious complex atop a hill in Kathmandu.",
-    },
-    {
-      id: 3,
-      name: "Fewa Lake",
-      cityId: 2,
-      description: "Beautiful lake in Pokhara with boating and mountain views.",
-    },
-  ];
-
   const images = [
     { id: 1, locationId: 1, url: "https://picsum.photos/400/300?1" },
     { id: 2, locationId: 1, url: "https://picsum.photos/400/300?2" },
@@ -123,8 +164,8 @@ const Dashboard = () => {
   });
 
   const [searchCity, setSearchCity] = useState("");
-  const filteredCities = cities.filter((city) => {
-    return city.name.toLowerCase().includes(searchCity.toLowerCase());
+  const filteredCities = Cities?.filter((city) => {
+    return city.name?.toLowerCase().includes(searchCity.toLowerCase());
   });
 
   useEffect(() => {
@@ -134,13 +175,13 @@ const Dashboard = () => {
     else html.classList.remove("dark");
   }, [darkMode]);
 
-  const filteredLocations = locations.filter((l) => l.cityId === selectedCity);
+  const filteredLocations = Locations.filter((l) => l.city_id === selectedCity);
   const filteredImages = images.filter(
     (img) => img.locationId === selectedLocation,
   );
 
-  const currentCity = cities.find((c) => c.id === selectedCity);
-  const currentLocation = locations.find((l) => l.id === selectedLocation);
+  const currentCity = Cities?.find((c) => c.id === selectedCity);
+  const currentLocation = Locations.find((l) => l.id === selectedLocation);
 
   const LogOut = () => {
     const confirmLogout = window.confirm("Are you sure you want to logout?");
@@ -216,7 +257,7 @@ const Dashboard = () => {
                     : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
                 }`}
               >
-                <MapPin size={18} /> {city.name}
+                <MapPin size={18} /> {city.name?.toUpperCase()}
               </button>
             ))}
           </div>
@@ -237,11 +278,11 @@ const Dashboard = () => {
           <div>
             {/* City Name */}
             <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400 mb-2">
-              {currentCity?.name}
+              {currentCity?.name?.toUpperCase()}
             </h2>
             {/* City Description */}
             <p className="mb-6 text-slate-700 dark:text-slate-300">
-              {currentCity?.description}
+              {currentCity?.description || "No description available"}
             </p>
 
             <h3 className="text-2xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
