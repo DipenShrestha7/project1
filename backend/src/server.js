@@ -7,7 +7,6 @@ import authenticateUsersRoutes from "./routes/AuthenticateUsersRoute.js";
 import authenticateCityLocationRoutes from "./routes/AuthenticateCity&LocationRoute.js";
 import "dotenv/config";
 import path from "path";
-import fs from "fs";
 
 const fastify = Fastify({ logger: true });
 

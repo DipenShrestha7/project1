@@ -17,6 +17,13 @@ type location = {
   longitude: number;
 };
 
+type image = {
+  image_id: string;
+  location_id: string;
+  image_url: string;
+  image_description: string;
+};
+
 export default function AdminPanel() {
   /* =========================
       CITY STATES
@@ -57,6 +64,25 @@ export default function AdminPanel() {
   const [searchLocationId, setSearchLocationId] = useState("");
   const [searchLocationName, setSearchLocationName] = useState("");
   const [fetchedLocation, setFetchedLocation] = useState<location | null>(null);
+
+  /* =========================
+      IMAGE STATES
+  ========================== */
+
+  const [imageLocationId, setImageLocationId] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageDescription, setImageDescription] = useState("");
+
+  const [updateImageId, setUpdateImageId] = useState("");
+  const [updateImageFile, setUpdateImageFile] = useState<File | null>(null);
+  const [updateImageDescription, setUpdateImageDescription] = useState("");
+
+  const [deleteImageId, setDeleteImageId] = useState("");
+
+  const [searchImageId, setSearchImageId] = useState("");
+  const [searchImageLocationId, setSearchImageLocationId] = useState("");
+  const [fetchedImage, setFetchedImage] = useState<image | null>(null);
+  const [fetchedImages, setFetchedImages] = useState<image[] | null>(null);
 
   /* =========================
       CITY FUNCTIONS
@@ -174,6 +200,109 @@ export default function AdminPanel() {
 
   const handleGetAllLocations = async () => {
     const res = await fetch("http://localhost:9000/api/admin/locations");
+    const data = await res.json();
+    console.log(data);
+  };
+
+  /* =========================
+      IMAGE FUNCTIONS
+  ========================== */
+
+  const handleAddImage = async () => {
+    if (!imageFile) {
+      return alert("Please select an image");
+    }
+
+    const formData = new FormData();
+    formData.append("location_id", imageLocationId);
+    formData.append("image", imageFile);
+    formData.append("image_description", imageDescription);
+
+    const res = await fetch("http://localhost:9000/api/admin/image", {
+      method: "POST",
+      // Note: When sending FormData, DO NOT set Content-Type header manually.
+      // The browser will automatically set it to multipart/form-data with the correct boundary.
+      body: formData,
+    });
+
+    if (res.ok) {
+      alert("Image Added");
+      // Reset form
+      setImageFile(null);
+      setImageLocationId("");
+      setImageDescription("");
+      // Reset file input element visually
+      const fileInput = document.getElementById(
+        "imageFileInput",
+      ) as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+    } else {
+      const errorData = await res.json();
+      alert("Error adding image: " + errorData.message);
+    }
+  };
+
+  const handleUpdateImage = async () => {
+    if (!updateImageFile && !updateImageDescription) {
+      return alert("Please provide a new image or description to update");
+    }
+
+    const formData = new FormData();
+    if (updateImageFile) formData.append("image", updateImageFile);
+    if (updateImageDescription)
+      formData.append("image_description", updateImageDescription);
+
+    const res = await fetch(
+      `http://localhost:9000/api/admin/image/${updateImageId}`,
+      {
+        method: "PUT",
+        body: formData,
+      },
+    );
+
+    if (res.ok) {
+      alert("Image Updated");
+      setUpdateImageId("");
+      setUpdateImageFile(null);
+      setUpdateImageDescription("");
+      const fileInput = document.getElementById(
+        "updateImageFileInput",
+      ) as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+    } else {
+      const errorData = await res.json();
+      alert("Error updating image: " + errorData.message);
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    await fetch(`http://localhost:9000/api/admin/image/${deleteImageId}`, {
+      method: "DELETE",
+    });
+    alert("Image Deleted");
+  };
+
+  const handleGetImage = async () => {
+    let url = "";
+    if (searchImageId)
+      url = `http://localhost:9000/api/admin/image/${searchImageId}`;
+    else if (searchImageLocationId)
+      url = `http://localhost:9000/api/admin/image/location/${searchImageLocationId}`;
+    else return alert("Enter Image ID or Location ID");
+
+    const res = await fetch(url);
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      setFetchedImages(data);
+      setFetchedImage(null);
+    } else {
+      setFetchedImage(data);
+      setFetchedImages(null);
+    }
+  };
+
+  const handleGetAllImages = async () => {
+    const res = await fetch("http://localhost:9000/api/admin/images");
     const data = await res.json();
     console.log(data);
   };
@@ -383,6 +512,126 @@ export default function AdminPanel() {
               <p>Description: {fetchedLocation.description}</p>
               <p>Latitude: {fetchedLocation.latitude}</p>
               <p>Longitude: {fetchedLocation.longitude}</p>
+            </div>
+          )}
+        </Container>
+
+        {/* ADD IMAGE */}
+        <Container title="Add Image">
+          <Input
+            placeholder="Location ID"
+            value={imageLocationId}
+            onChange={setImageLocationId}
+          />
+          <input
+            id="imageFileInput"
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                setImageFile(e.target.files[0]);
+              }
+            }}
+            className="w-full p-2 mb-3 rounded bg-gray-800 border border-gray-700 text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-600 file:text-white hover:file:bg-green-700 cursor-pointer"
+          />
+          <Input
+            placeholder="Image Description"
+            value={imageDescription}
+            onChange={setImageDescription}
+          />
+          <Button
+            text="Add Image"
+            onClick={handleAddImage}
+            color="bg-green-600"
+          />
+        </Container>
+
+        {/* UPDATE IMAGE */}
+        <Container title="Update Image">
+          <Input
+            placeholder="Image ID"
+            value={updateImageId}
+            onChange={setUpdateImageId}
+          />
+          <input
+            id="updateImageFileInput"
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                setUpdateImageFile(e.target.files[0]);
+              }
+            }}
+            className="w-full p-2 mb-3 rounded bg-gray-800 border border-gray-700 text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-600 file:text-white hover:file:bg-yellow-700 cursor-pointer"
+          />
+          <Input
+            placeholder="New Description"
+            value={updateImageDescription}
+            onChange={setUpdateImageDescription}
+          />
+          <Button
+            text="Update Image"
+            onClick={handleUpdateImage}
+            color="bg-yellow-600"
+          />
+        </Container>
+
+        {/* DELETE IMAGE */}
+        <Container title="Delete Image">
+          <Input
+            placeholder="Image ID"
+            value={deleteImageId}
+            onChange={setDeleteImageId}
+          />
+          <Button
+            text="Delete Image"
+            onClick={handleDeleteImage}
+            color="bg-red-600"
+          />
+        </Container>
+
+        {/* GET IMAGE */}
+        <Container title="Get Image">
+          <Button
+            text="Fetch All Images"
+            onClick={handleGetAllImages}
+            color="bg-teal-600"
+          />
+          <Input
+            placeholder="Image ID"
+            value={searchImageId}
+            onChange={setSearchImageId}
+          />
+          <Input
+            placeholder="Location ID"
+            value={searchImageLocationId}
+            onChange={setSearchImageLocationId}
+          />
+          <Button
+            text="Fetch Image(s)"
+            onClick={handleGetImage}
+            color="bg-teal-600"
+          />
+          {fetchedImage && (
+            <div className="mt-4 bg-gray-800 p-3 rounded">
+              <p>ID: {fetchedImage.image_id}</p>
+              <p>Location ID: {fetchedImage.location_id}</p>
+              <p className="truncate">URL: {fetchedImage.image_url}</p>
+              <p>Description: {fetchedImage.image_description}</p>
+            </div>
+          )}
+          {fetchedImages && fetchedImages.length > 0 && (
+            <div className="mt-4 bg-gray-800 p-3 rounded max-h-40 overflow-y-auto">
+              <p className="font-bold mb-2">Images ({fetchedImages.length})</p>
+              {fetchedImages.map((img) => (
+                <div
+                  key={img.image_id}
+                  className="mb-2 border-b border-gray-700 pb-2"
+                >
+                  <p>ID: {img.image_id}</p>
+                  <p className="truncate">URL: {img.image_url}</p>
+                </div>
+              ))}
             </div>
           )}
         </Container>

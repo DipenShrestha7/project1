@@ -40,10 +40,25 @@ type Locations = {
   longitude: number | string;
 };
 
+type Image = {
+  image_id: number;
+  location_id: number;
+  image_url: string;
+  image_description: string;
+};
+
+type Images = {
+  id: number;
+  location_id: number;
+  image_url: string;
+  image_description: string;
+};
+
 const Dashboard = () => {
   const [User, setUser] = useState<User>();
   const [Cities, setCities] = useState<Cities[]>([]);
   const [Locations, setLocations] = useState<Locations[]>([]);
+  const [Images, setImages] = useState<Images[]>([]);
   const navigate = useNavigate();
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -65,7 +80,6 @@ const Dashboard = () => {
     };
     fetchCityData();
   }, []);
-  console.log(Cities);
 
   useEffect(() => {
     const fetchLocationData = async () => {
@@ -76,7 +90,7 @@ const Dashboard = () => {
         const data: Location[] = await response.json();
         console.log(data);
         const formatted: Locations[] = data.map((item) => ({
-          id: item.city_id,
+          id: item.location_id,
           name: item.location_name,
           description: item.description,
           city_id: item.city_id,
@@ -89,6 +103,28 @@ const Dashboard = () => {
       }
     };
     fetchLocationData();
+  }, []);
+
+  useEffect(() => {
+    const fetchImageData = async () => {
+      try {
+        const response = await fetch("http://localhost:9000/api/admin/images");
+        const data: Image[] = await response.json();
+        console.log(data);
+        const formatted: Images[] = data.map((item) => {
+          return {
+            id: item.image_id,
+            location_id: item.location_id,
+            image_url: item.image_url,
+            image_description: item.image_description,
+          };
+        });
+        setImages(formatted);
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    fetchImageData();
   }, []);
 
   useEffect(() => {
@@ -149,12 +185,6 @@ const Dashboard = () => {
     }
   };
 
-  const images = [
-    { id: 1, locationId: 1, url: "https://picsum.photos/400/300?1" },
-    { id: 2, locationId: 1, url: "https://picsum.photos/400/300?2" },
-    { id: 3, locationId: 3, url: "https://picsum.photos/400/300?3" },
-  ];
-
   const [selectedCity, setSelectedCity] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [darkMode, setDarkMode] = useState(() => {
@@ -176,9 +206,13 @@ const Dashboard = () => {
   }, [darkMode]);
 
   const filteredLocations = Locations.filter((l) => l.city_id === selectedCity);
-  const filteredImages = images.filter(
-    (img) => img.locationId === selectedLocation,
+  const filteredImages = Images.filter(
+    (img) => img.location_id === selectedLocation,
   );
+  console.log(selectedLocation);
+  console.log(Images);
+  console.log(filteredImages);
+  console.log(filteredImages.length);
 
   const currentCity = Cities?.find((c) => c.id === selectedCity);
   const currentLocation = Locations.find((l) => l.id === selectedLocation);
@@ -349,7 +383,8 @@ const Dashboard = () => {
                   key={img.id}
                   className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition"
                 >
-                  <img src={img.url} className="w-full h-56 object-cover" />
+                  <img src={img.image_url} className="w-full h-56 bg-cover" />
+                  <h1 className="text-center">{img.image_description}</h1>
                 </div>
               ))}
             </div>
