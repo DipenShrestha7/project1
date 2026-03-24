@@ -207,13 +207,24 @@ function authenticateCityLocationRoutes(fastify) {
   //Image
   fastify.post("/admin/image", async (req, reply) => {
     try {
-      const data = await req.file();
-      if (!data) {
-        return reply.code(400).send({ message: "No image file uploaded" });
+      const parts = req.parts();
+      let location_id, image_description, fileData;
+
+      for await (const part of parts) {
+        if (part.type === "field") {
+          if (part.fieldname === "location_id") {
+            location_id = part.value;
+          } else if (part.fieldname === "image_description") {
+            image_description = part.value;
+          }
+        } else if (part.type === "file") {
+          fileData = part;
+        }
       }
 
-      const location_id = data.fields.location_id?.value;
-      const image_description = data.fields.image_description?.value;
+      if (!fileData) {
+        return reply.code(400).send({ message: "No image file uploaded" });
+      }
 
       if (!location_id) {
         return reply.code(400).send({ message: "location_id is required" });
@@ -226,18 +237,18 @@ function authenticateCityLocationRoutes(fastify) {
       }
 
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      const ext = path.extname(data.filename) || ".jpg";
+      const ext = path.extname(fileData.filename) || ".jpg";
       const filename = `${uniqueSuffix}${ext}`;
       const savePath = path.join(uploadDir, filename);
 
-      await pipeline(data.file, fs.createWriteStream(savePath));
+      await pipeline(fileData.file, fs.createWriteStream(savePath));
 
       const image_url = `http://localhost:9000/uploads/locations/${filename}`;
 
       const image = await ImageModel.create({
         location_id,
         image_url,
-        image_description,
+        image_description: image_description || null,
       });
 
       return {
@@ -287,32 +298,38 @@ function authenticateCityLocationRoutes(fastify) {
 
   fastify.put("/admin/image/:image_id", async (request, reply) => {
     const { image_id } = request.params;
-    const data = await request.file();
-
-    const image_description = data.fields.image_description?.value;
-    let image_url;
-    if (data.filename) {
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      const ext = path.extname(data.filename) || ".jpg";
-      const filename = `${uniqueSuffix}${ext}`;
-      const uploadDir = path.join(process.cwd(), "uploads", "locations");
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      const savePath = path.join(uploadDir, filename);
-
-      await pipeline(data.file, fs.createWriteStream(savePath));
-
-      image_url = `http://localhost:9000/uploads/locations/${filename}`;
-    }
-    const updateData = {};
-    if (image_url) {
-      updateData.image_url = image_url;
-    }
-    if (image_description) {
-      updateData.image_description = image_description;
-    }
     try {
+      const parts = request.parts();
+      let image_description, fileData;
+
+      for await (const part of parts) {
+        if (part.type === "field") {
+          if (part.fieldname === "image_description") {
+            image_description = part.value;
+          }
+        } else if (part.type === "file") {
+          fileData = part;
+        }
+      }
+
+      const updateData = {};
+      if (fileData) {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const ext = path.extname(fileData.filename) || ".jpg";
+        const filename = `${uniqueSuffix}${ext}`;
+        const uploadDir = path.join(process.cwd(), "uploads", "locations");
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        const savePath = path.join(uploadDir, filename);
+
+        await pipeline(fileData.file, fs.createWriteStream(savePath));
+
+        updateData.image_url = `http://localhost:9000/uploads/locations/${filename}`;
+      }
+      if (image_description) {
+        updateData.image_description = image_description;
+      }
       const updated_image = await ImageModel.update(updateData, {
         where: { image_id },
       });

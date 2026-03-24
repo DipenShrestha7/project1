@@ -187,8 +187,17 @@ const Dashboard = () => {
 
   const [selectedCity, setSelectedCity] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [flippedImageIds, setFlippedImageIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const [hasUserThemePreference, setHasUserThemePreference] = useState(() => {
+    return localStorage.getItem("darkMode") !== null;
+  });
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("darkMode");
+    if (saved === null) {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
     if (saved === "true") return true;
     return false;
   });
@@ -199,11 +208,30 @@ const Dashboard = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem("darkMode", darkMode.toString());
     const html = document.documentElement;
     if (darkMode) html.classList.add("dark");
     else html.classList.remove("dark");
   }, [darkMode]);
+
+  useEffect(() => {
+    if (hasUserThemePreference) {
+      localStorage.setItem("darkMode", darkMode.toString());
+    }
+  }, [darkMode, hasUserThemePreference]);
+
+  useEffect(() => {
+    if (hasUserThemePreference) return;
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleThemeChange = (event: MediaQueryListEvent) => {
+      setDarkMode(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleThemeChange);
+    return () => {
+      mediaQuery.removeEventListener("change", handleThemeChange);
+    };
+  }, [hasUserThemePreference]);
 
   const filteredLocations = Locations.filter((l) => l.city_id === selectedCity);
   const filteredImages = Images.filter(
@@ -216,6 +244,25 @@ const Dashboard = () => {
 
   const currentCity = Cities?.find((c) => c.id === selectedCity);
   const currentLocation = Locations.find((l) => l.id === selectedLocation);
+  const parsedLatitude = currentLocation
+    ? Number(currentLocation.latitude)
+    : Number.NaN;
+  const parsedLongitude = currentLocation
+    ? Number(currentLocation.longitude)
+    : Number.NaN;
+  const hasValidCoordinates =
+    Number.isFinite(parsedLatitude) &&
+    Number.isFinite(parsedLongitude) &&
+    parsedLatitude >= -90 &&
+    parsedLatitude <= 90 &&
+    parsedLongitude >= -180 &&
+    parsedLongitude <= 180;
+  const googleMapsUrl = hasValidCoordinates
+    ? `https://www.google.com/maps?q=${parsedLatitude},${parsedLongitude}`
+    : "";
+  const mapEmbedUrl = hasValidCoordinates
+    ? `https://maps.google.com/maps?q=${parsedLatitude},${parsedLongitude}&z=15&output=embed`
+    : "";
 
   const LogOut = () => {
     const confirmLogout = window.confirm("Are you sure you want to logout?");
@@ -266,7 +313,7 @@ const Dashboard = () => {
           </h3>
           <div className="relative my-4">
             <input
-              className="border border-white white p-1.5 pl-8 bg-white dark:bg-slate-800 text-sm rounded-3xl w-full"
+              className="border border-black white p-1.5 pl-8 bg-white text-black dark:bg-slate-800 text-sm rounded-3xl w-full dark:border-white dark:text-white"
               placeholder="Search"
               type="text"
               value={searchCity}
@@ -360,6 +407,37 @@ const Dashboard = () => {
                 {currentLocation?.description}
               </p>
 
+              {hasValidCoordinates ? (
+                <div className="mt-4 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-md">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      Coordinates: {parsedLatitude.toFixed(6)},{" "}
+                      {parsedLongitude.toFixed(6)}
+                    </p>
+                    <a
+                      href={googleMapsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-sky-600 dark:text-sky-400 hover:underline"
+                    >
+                      Open in Google Maps
+                    </a>
+                  </div>
+                  <iframe
+                    title="Location map"
+                    src={mapEmbedUrl}
+                    className="w-full h-72 rounded-xl border border-slate-200 dark:border-slate-700"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
+                  Map unavailable: this location is missing valid
+                  latitude/longitude.
+                </p>
+              )}
+
               <div className="py-4 w-1/3"></div>
               <div className="flex items-center gap-2 mb-6">
                 <Camera className="text-sky-600" />
@@ -381,10 +459,64 @@ const Dashboard = () => {
               {filteredImages.map((img) => (
                 <div
                   key={img.id}
-                  className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition"
+                  className="h-64 cursor-pointer perspective"
+                  onClick={() => {
+                    const newFlipped = new Set(flippedImageIds);
+                    if (newFlipped.has(img.id)) {
+                      newFlipped.delete(img.id);
+                    } else {
+                      newFlipped.add(img.id);
+                    }
+                    setFlippedImageIds(newFlipped);
+                  }}
                 >
-                  <img src={img.image_url} className="w-full h-56 bg-cover" />
-                  <h1 className="text-center">{img.image_description}</h1>
+                  <div
+                    className="relative w-full h-full transition-transform duration-500 ease-in-out"
+                    style={{
+                      transformStyle: "preserve-3d",
+                      transform: flippedImageIds.has(img.id)
+                        ? "rotateY(180deg)"
+                        : "rotateY(0deg)",
+                    }}
+                  >
+                    {/* Front - Image */}
+                    <div
+                      className="absolute w-full h-full bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition"
+                      style={{
+                        backfaceVisibility: "hidden",
+                      }}
+                    >
+                      <img
+                        src={img.image_url}
+                        className="w-full h-full object-cover"
+                        alt={img.image_description}
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-3 text-white text-xs">
+                        Click to see description
+                      </div>
+                    </div>
+
+                    {/* Back - Description */}
+                    <div
+                      className="absolute w-full h-full bg-sky-600 dark:bg-sky-700 rounded-2xl shadow-md overflow-hidden p-6 flex flex-col justify-between"
+                      style={{
+                        backfaceVisibility: "hidden",
+                        transform: "rotateY(180deg)",
+                      }}
+                    >
+                      <div>
+                        <h3 className="text-white font-semibold text-lg mb-3">
+                          Description
+                        </h3>
+                        <p className="text-white/90 text-sm leading-relaxed">
+                          {img.image_description || "No description available"}
+                        </p>
+                      </div>
+                      <div className="text-white/70 text-xs text-center">
+                        Click to go back
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -394,7 +526,10 @@ const Dashboard = () => {
 
       {/* Dark Mode Toggle Button */}
       <button
-        onClick={() => setDarkMode(!darkMode)}
+        onClick={() => {
+          setHasUserThemePreference(true);
+          setDarkMode((prev) => !prev);
+        }}
         className="fixed bottom-6 left-6 p-3 bg-sky-600 text-white rounded-full shadow-lg hover:bg-sky-700 transition z-50"
       >
         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
