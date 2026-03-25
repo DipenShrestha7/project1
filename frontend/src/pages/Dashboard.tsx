@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
-import { MapPin, Sun, Moon, Search, Camera } from "lucide-react";
+import {
+  MapPin,
+  Sun,
+  Moon,
+  Camera,
+  Heart,
+  History,
+  Search,
+  Check,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 type User = {
@@ -54,6 +63,8 @@ type Images = {
   image_description: string;
 };
 
+type ActiveSection = "cities" | "wishlist" | "travelHistory";
+
 const Dashboard = () => {
   const [User, setUser] = useState<User>();
   const [Cities, setCities] = useState<Cities[]>([]);
@@ -61,6 +72,7 @@ const Dashboard = () => {
   const [Images, setImages] = useState<Images[]>([]);
   const navigate = useNavigate();
   const [preview, setPreview] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<ActiveSection>("cities");
 
   useEffect(() => {
     const fetchCityData = async () => {
@@ -187,6 +199,15 @@ const Dashboard = () => {
 
   const [selectedCity, setSelectedCity] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [wishlistCityIds, setWishlistCityIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const [wishlistLocationIds, setWishlistLocationIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const [travelHistoryLocationIds, setTravelHistoryLocationIds] = useState<
+    Set<number>
+  >(new Set());
   const [flippedImageIds, setFlippedImageIds] = useState<Set<number>>(
     new Set(),
   );
@@ -201,7 +222,6 @@ const Dashboard = () => {
     if (saved === "true") return true;
     return false;
   });
-
   const [searchCity, setSearchCity] = useState("");
   const filteredCities = Cities?.filter((city) => {
     return city.name?.toLowerCase().includes(searchCity.toLowerCase());
@@ -234,6 +254,13 @@ const Dashboard = () => {
   }, [hasUserThemePreference]);
 
   const filteredLocations = Locations.filter((l) => l.city_id === selectedCity);
+  const wishlistCities = Cities.filter((city) => wishlistCityIds.has(city.id));
+  const wishlistLocations = Locations.filter((location) =>
+    wishlistLocationIds.has(location.id),
+  );
+  const travelHistoryLocations = Locations.filter((location) =>
+    travelHistoryLocationIds.has(location.id),
+  );
   const filteredImages = Images.filter(
     (img) => img.location_id === selectedLocation,
   );
@@ -272,6 +299,46 @@ const Dashboard = () => {
     }
   };
 
+  const toggleLocationCollection = (
+    locationId: number,
+    collection: "wishlist" | "travelHistory",
+  ) => {
+    if (collection === "wishlist") {
+      setWishlistLocationIds((prev) => {
+        const updated = new Set(prev);
+        if (updated.has(locationId)) {
+          updated.delete(locationId);
+        } else {
+          updated.add(locationId);
+        }
+        return updated;
+      });
+      return;
+    }
+
+    setTravelHistoryLocationIds((prev) => {
+      const updated = new Set(prev);
+      if (updated.has(locationId)) {
+        updated.delete(locationId);
+      } else {
+        updated.add(locationId);
+      }
+      return updated;
+    });
+  };
+
+  const toggleCityWishlist = (cityId: number) => {
+    setWishlistCityIds((prev) => {
+      const updated = new Set(prev);
+      if (updated.has(cityId)) {
+        updated.delete(cityId);
+      } else {
+        updated.add(cityId);
+      }
+      return updated;
+    });
+  };
+
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900 text-slate-900 dark:text-slate-200 transition-colors">
       {/* Sidebar */}
@@ -308,54 +375,121 @@ const Dashboard = () => {
         </div>
 
         <div>
-          <h3 className="text-sky-900 dark:text-sky-400 font-semibold mb-3 text-lg">
-            Cities
-          </h3>
-          <div className="relative my-4">
-            <input
-              className="border border-black white p-1.5 pl-8 bg-white text-black dark:bg-slate-800 text-sm rounded-3xl w-full dark:border-white dark:text-white"
-              placeholder="Search"
-              type="text"
-              value={searchCity}
-              onChange={(e) => setSearchCity(e.target.value)}
-            />
-            <Search
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"
-              size={16}
-            />
+          <div className="flex flex-col gap-2 mb-5">
+            <button
+              onClick={() => setActiveSection("wishlist")}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
+                activeSection === "wishlist"
+                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
+                  : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+              }`}
+            >
+              <Heart size={18} /> Wishlist
+            </button>
+            <button
+              onClick={() => setActiveSection("travelHistory")}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
+                activeSection === "travelHistory"
+                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
+                  : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+              }`}
+            >
+              <History size={18} /> Travel History
+            </button>
+            <button
+              onClick={() => {
+                setActiveSection("cities");
+                setSelectedLocation(null);
+              }}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
+                activeSection === "cities"
+                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
+                  : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+              }`}
+            >
+              <MapPin size={18} /> Cities
+            </button>
           </div>
-          <div className="flex flex-col gap-2">
-            {filteredCities.map((city) => (
-              <button
-                key={city.id}
-                onClick={() => {
-                  setSelectedCity(city.id);
-                  setSelectedLocation(null);
-                }}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
-                  selectedCity === city.id
-                    ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                    : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
-                }`}
-              >
-                <MapPin size={18} /> {city.name?.toUpperCase()}
-              </button>
-            ))}
-          </div>
+
+          {activeSection === "cities" && (
+            <>
+              <div className="relative my-4">
+                <input
+                  className="border border-black p-2 pl-8 bg-white text-black dark:bg-slate-800 text-sm rounded-xl w-full dark:border-white dark:text-white"
+                  placeholder="Search cities"
+                  type="text"
+                  value={searchCity}
+                  onChange={(e) => setSearchCity(e.target.value)}
+                />
+                <Search
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"
+                  size={16}
+                />
+              </div>
+              <div className="flex flex-col gap-2 max-h-72 overflow-auto pr-1">
+                {filteredCities.map((city) => (
+                  <div
+                    key={city.id}
+                    onClick={() => {
+                      setSelectedCity(city.id);
+                      setSelectedLocation(null);
+                    }}
+                    className={`flex items-center justify-between gap-2 px-4 py-3 rounded-xl transition cursor-pointer ${
+                      selectedCity === city.id
+                        ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
+                        : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin size={18} className="shrink-0" />
+                      <span className="truncate">
+                        {city.name?.toUpperCase()}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleCityWishlist(city.id);
+                      }}
+                      className="p-1.5 rounded-full hover:bg-white/40 dark:hover:bg-black/20 transition"
+                      aria-label={
+                        wishlistCityIds.has(city.id)
+                          ? `Remove ${city.name} from city wishlist`
+                          : `Add ${city.name} to city wishlist`
+                      }
+                    >
+                      <Heart
+                        size={16}
+                        fill={
+                          wishlistCityIds.has(city.id) ? "currentColor" : "none"
+                        }
+                        className={
+                          wishlistCityIds.has(city.id)
+                            ? "text-pink-600 dark:text-pink-300"
+                            : "text-slate-500 dark:text-slate-300"
+                        }
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 p-10 overflow-auto">
         {/* No city selected */}
-        {!selectedCity && (
+        {activeSection === "cities" && !selectedCity && (
           <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-400 text-xl">
             Select a city to explore locations
           </div>
         )}
 
         {/* City selected but no location selected */}
-        {selectedCity && !selectedLocation && (
+        {activeSection === "cities" && selectedCity && !selectedLocation && (
           <div>
             {/* City Name */}
             <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400 mb-2">
@@ -379,6 +513,40 @@ const Dashboard = () => {
                   <h3 className="text-lg font-semibold text-sky-800 dark:text-sky-300">
                     {loc.name}
                   </h3>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleLocationCollection(loc.id, "wishlist");
+                      }}
+                      className={`flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-medium cursor-pointer transition ${
+                        wishlistLocationIds.has(loc.id)
+                          ? "bg-pink-100 border-pink-300 text-pink-700 dark:bg-pink-700 dark:border-pink-600 dark:text-white"
+                          : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+                      }`}
+                    >
+                      <Heart size={14} />
+                      {wishlistLocationIds.has(loc.id)
+                        ? "In Wishlist"
+                        : "Add to Wishlist"}
+                    </button>
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleLocationCollection(loc.id, "travelHistory");
+                      }}
+                      className={`flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-medium cursor-pointer transition ${
+                        travelHistoryLocationIds.has(loc.id)
+                          ? "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-700 dark:border-emerald-600 dark:text-white"
+                          : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+                      }`}
+                    >
+                      <History size={14} />
+                      {travelHistoryLocationIds.has(loc.id)
+                        ? "Visited"
+                        : "Mark Visited"}
+                    </button>
+                  </div>
                   <p className="text-slate-500 dark:text-slate-400 mt-1">
                     Tap to view images
                   </p>
@@ -388,8 +556,141 @@ const Dashboard = () => {
           </div>
         )}
 
+        {activeSection === "wishlist" && (
+          <div>
+            <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
+              Wishlist
+            </h2>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+              <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+                <h3 className="text-xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
+                  City Wishlist
+                </h3>
+                {wishlistCities.length === 0 ? (
+                  <p className="text-slate-500 dark:text-slate-400">
+                    No cities added yet.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {wishlistCities.map((city) => (
+                      <div
+                        key={city.id}
+                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-gray-700/60"
+                      >
+                        <div>
+                          <p className="font-semibold text-sky-800 dark:text-sky-300">
+                            {city.name?.toUpperCase()}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                            {city.description || "No description available"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setActiveSection("cities");
+                            setSelectedCity(city.id);
+                            setSelectedLocation(null);
+                          }}
+                          className="px-3 py-1.5 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition text-sm"
+                        >
+                          View
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+                <h3 className="text-xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
+                  Location Wishlist
+                </h3>
+                {wishlistLocations.length === 0 ? (
+                  <p className="text-slate-500 dark:text-slate-400">
+                    No locations added yet.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {wishlistLocations.map((loc) => (
+                      <div
+                        key={loc.id}
+                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-gray-700/60"
+                      >
+                        <div>
+                          <p className="font-semibold text-sky-800 dark:text-sky-300">
+                            {loc.name}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                            {loc.description}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setActiveSection("cities");
+                            setSelectedCity(loc.city_id);
+                            setSelectedLocation(loc.id);
+                          }}
+                          className="px-3 py-1.5 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition text-sm"
+                        >
+                          Open
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+
+            {wishlistCities.length === 0 && wishlistLocations.length === 0 && (
+              <p className="text-slate-500 dark:text-slate-400 mt-5">
+                Add cities from the Cities sidebar heart icon and locations from
+                city cards.
+              </p>
+            )}
+          </div>
+        )}
+
+        {activeSection === "travelHistory" && (
+          <div>
+            <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
+              Travel History
+            </h2>
+            {travelHistoryLocations.length === 0 ? (
+              <p className="text-slate-500 dark:text-slate-400">
+                No visited locations yet.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {travelHistoryLocations.map((loc) => (
+                  <div
+                    key={loc.id}
+                    className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md"
+                  >
+                    <h3 className="text-lg font-semibold text-sky-800 dark:text-sky-300">
+                      {loc.name}
+                    </h3>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1 mb-3">
+                      {loc.description}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setActiveSection("cities");
+                        setSelectedCity(loc.city_id);
+                        setSelectedLocation(loc.id);
+                      }}
+                      className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition"
+                    >
+                      Open Location
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Location selected */}
-        {selectedLocation && (
+        {activeSection === "cities" && selectedLocation && (
           <div>
             {/* Location Name */}
             <div className="mb-6">
@@ -406,6 +707,50 @@ const Dashboard = () => {
               <p className="mt-2 text-slate-700 dark:text-slate-300">
                 {currentLocation?.description}
               </p>
+
+              {currentLocation && (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() =>
+                      toggleLocationCollection(currentLocation.id, "wishlist")
+                    }
+                    className={`flex items-center gap-2 text-sm px-3.5 py-2 rounded-lg border font-medium transition cursor-pointer ${
+                      wishlistLocationIds.has(currentLocation.id)
+                        ? "bg-pink-100 border-pink-300 text-pink-700 dark:bg-pink-700 dark:border-pink-600 dark:text-white"
+                        : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+                    }`}
+                  >
+                    <Heart size={15} />
+                    {wishlistLocationIds.has(currentLocation.id)
+                      ? "In Wishlist"
+                      : "Add to Wishlist"}
+                    {wishlistLocationIds.has(currentLocation.id) && (
+                      <Check size={15} />
+                    )}
+                  </button>
+                  <button
+                    onClick={() =>
+                      toggleLocationCollection(
+                        currentLocation.id,
+                        "travelHistory",
+                      )
+                    }
+                    className={`flex items-center gap-2 text-sm px-3.5 py-2 rounded-lg border font-medium transition cursor-pointer ${
+                      travelHistoryLocationIds.has(currentLocation.id)
+                        ? "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-700 dark:border-emerald-600 dark:text-white"
+                        : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+                    }`}
+                  >
+                    <History size={15} />
+                    {travelHistoryLocationIds.has(currentLocation.id)
+                      ? "Visited"
+                      : "Mark Visited"}
+                    {travelHistoryLocationIds.has(currentLocation.id) && (
+                      <Check size={15} />
+                    )}
+                  </button>
+                </div>
+              )}
 
               {hasValidCoordinates ? (
                 <div className="mt-4 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-md">
