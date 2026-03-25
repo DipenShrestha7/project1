@@ -5,6 +5,8 @@ import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import authenticateUsersRoutes from "./routes/AuthenticateUsersRoute.js";
 import authenticateCityLocationRoutes from "./routes/AuthenticateCity&LocationRoute.js";
+// import authenticateWishlistRoute from "./routes/AuthenticateWishlistRoute.js";
+// import authenticateHistoryRoute from "./routes/AuthenticateHistoryRoute.js";
 import "dotenv/config";
 import path from "path";
 
@@ -28,6 +30,9 @@ const start = async () => {
 
     fastify.register(authenticateUsersRoutes, { prefix: "/api" });
     fastify.register(authenticateCityLocationRoutes, { prefix: "/api" });
+    // fastify.register(authenticateWishlistRoute, { prefix: "/api" });
+    // fastify.register(authenticateHistoryRoute, { prefix: "/api" });
+
     const port = process.env.PORT || 9000;
     await fastify.listen({ port: port });
     console.log(`Server running on http://localhost:${port}`);
