@@ -14,3 +14,12 @@ h5,
 h6 {
   font-family: "Poppins", sans-serif;
 }
+
+.dashboard-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.dashboard-scrollbar::-webkit-scrollbar {
+  display: none;
+}

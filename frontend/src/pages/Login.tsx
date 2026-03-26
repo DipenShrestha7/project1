@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import mountainImage from "../assets/mountain.jpg";
@@ -7,6 +7,13 @@ type User = {
   fullName?: string;
   email?: string;
   password?: string;
+};
+
+type NoticeType = "error" | "success" | "info";
+
+type Notice = {
+  type: NoticeType;
+  message: string;
 };
 
 const App = () => {
@@ -18,10 +25,19 @@ const App = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loginError, setLoginError] = useState(false);
-  const [signupSuccess, setSignupSuccess] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!notice) return;
+
+    const timeoutId = setTimeout(() => {
+      setNotice(null);
+    }, 3500);
+
+    return () => clearTimeout(timeoutId);
+  }, [notice]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,32 +62,41 @@ const App = () => {
       const data = await response.json();
       if (isLogin) {
         if (!response.ok) {
-          alert("Email or Password incorrect");
-          setLoginError(false);
-          // alert(data.message || "Login failed");
+          setNotice({
+            type: "error",
+            message: "Email or Password incorrect",
+          });
           return;
         }
       } else {
         if (!response.ok) {
-          alert("Email already exists. Please use a new one !!");
-          setLoginError(false);
-          // alert(data.message || "Login failed");
+          setNotice({
+            type: "error",
+            message: "Email already exists. Please use a new one.",
+          });
           return;
         }
       }
       console.log("Success:", data);
       if (isLogin) {
         localStorage.setItem("token", data.token);
-        setSignupSuccess(true);
+        setNotice(null);
         navigate("/dashboard");
       } else {
         setUser(body);
-        setSignupSuccess(true);
+        setNotice({
+          type: "success",
+          message: "Account created successfully. Please log in.",
+        });
         setPassword("");
         setConfirmPassword("");
       }
     } catch (error) {
       console.error("Error during fetch:", error);
+      setNotice({
+        type: "error",
+        message: "Something went wrong. Please try again.",
+      });
     }
   };
 
@@ -185,14 +210,17 @@ const App = () => {
               {isLogin ? "Log in" : "Create account"}
             </button>
           </form>
-          {isLogin && loginError && (
-            <div className="bg-red-300 text-center border mt-6 py-2.5 border-red-400 text-white rounded-md">
-              Incorrect Email or Password
-            </div>
-          )}
-          {!isLogin && signupSuccess && (
-            <div className="bg-green-300 text-center border mt-6 py-2.5 border-green-400 text-white rounded-md">
-              Account created successfully. Please log in.
+          {notice && (
+            <div
+              className={`mt-6 rounded-xl border px-4 py-3 text-sm font-medium ${
+                notice.type === "error"
+                  ? "border-red-300 bg-red-50 text-red-700"
+                  : notice.type === "success"
+                    ? "border-green-300 bg-green-50 text-green-700"
+                    : "border-sky-300 bg-sky-50 text-sky-700"
+              }`}
+            >
+              {notice.message}
             </div>
           )}
           <p className="text-center text-sky-600 mt-6 text-sm">
@@ -200,8 +228,7 @@ const App = () => {
             <button
               onClick={() => {
                 setIsLogin(!isLogin);
-                setLoginError(false);
-                setSignupSuccess(false);
+                setNotice(null);
               }}
               className="text-sky-700 font-medium hover:underline"
             >

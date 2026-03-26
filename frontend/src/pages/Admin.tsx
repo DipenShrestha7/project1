@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 type city = {
@@ -22,6 +22,13 @@ type image = {
   location_id: string;
   image_url: string;
   image_description: string;
+};
+
+type NotificationType = "success" | "error" | "info";
+
+type Notification = {
+  type: NotificationType;
+  message: string;
 };
 
 export default function AdminPanel() {
@@ -83,6 +90,21 @@ export default function AdminPanel() {
   const [searchImageLocationId, setSearchImageLocationId] = useState("");
   const [fetchedImage, setFetchedImage] = useState<image | null>(null);
   const [fetchedImages, setFetchedImages] = useState<image[] | null>(null);
+  const [notification, setNotification] = useState<Notification | null>(null);
+
+  const showNotification = (type: NotificationType, message: string) => {
+    setNotification({ type, message });
+  };
+
+  useEffect(() => {
+    if (!notification) return;
+
+    const timeoutId = setTimeout(() => {
+      setNotification(null);
+    }, 3000);
+
+    return () => clearTimeout(timeoutId);
+  }, [notification]);
 
   /* =========================
       CITY FUNCTIONS
@@ -97,7 +119,7 @@ export default function AdminPanel() {
         description: cityDescription,
       }),
     });
-    alert("City Added");
+    showNotification("success", "City Added");
   };
 
   const handleUpdateCity = async () => {
@@ -109,14 +131,14 @@ export default function AdminPanel() {
         description: updateCityDescription,
       }),
     });
-    alert("City Updated");
+    showNotification("success", "City Updated");
   };
 
   const handleDeleteCity = async () => {
     await fetch(`http://localhost:9000/api/admin/city/${deleteCityId}`, {
       method: "DELETE",
     });
-    alert("City Deleted");
+    showNotification("success", "City Deleted");
   };
 
   const handleGetCity = async () => {
@@ -125,7 +147,10 @@ export default function AdminPanel() {
       url = `http://localhost:9000/api/admin/city/${searchCityId}`;
     else if (searchCityName)
       url = `http://localhost:9000/api/admin/city/name/${searchCityName}`;
-    else return alert("Enter ID or Name");
+    else {
+      showNotification("info", "Enter ID or Name");
+      return;
+    }
 
     const res = await fetch(url);
     const data = await res.json();
@@ -154,7 +179,7 @@ export default function AdminPanel() {
         longitude,
       }),
     });
-    alert("Location Added");
+    showNotification("success", "Location Added");
   };
 
   const handleUpdateLocation = async () => {
@@ -171,7 +196,7 @@ export default function AdminPanel() {
         }),
       },
     );
-    alert("Location Updated");
+    showNotification("success", "Location Updated");
   };
 
   const handleDeleteLocation = async () => {
@@ -181,7 +206,7 @@ export default function AdminPanel() {
         method: "DELETE",
       },
     );
-    alert("Location Deleted");
+    showNotification("success", "Location Deleted");
   };
 
   const handleGetLocation = async () => {
@@ -190,7 +215,10 @@ export default function AdminPanel() {
       url = `http://localhost:9000/api/admin/location/${searchLocationId}`;
     else if (searchLocationName)
       url = `http://localhost:9000/api/admin/location/name/${searchLocationName}`;
-    else return alert("Enter ID or Name");
+    else {
+      showNotification("info", "Enter ID or Name");
+      return;
+    }
 
     const res = await fetch(url);
     const data = await res.json();
@@ -210,7 +238,8 @@ export default function AdminPanel() {
 
   const handleAddImage = async () => {
     if (!imageFile) {
-      return alert("Please select an image");
+      showNotification("info", "Please select an image");
+      return;
     }
 
     const formData = new FormData();
@@ -226,7 +255,7 @@ export default function AdminPanel() {
     });
 
     if (res.ok) {
-      alert("Image Added");
+      showNotification("success", "Image Added");
       // Reset form
       setImageFile(null);
       setImageLocationId("");
@@ -238,13 +267,17 @@ export default function AdminPanel() {
       if (fileInput) fileInput.value = "";
     } else {
       const errorData = await res.json();
-      alert("Error adding image: " + errorData.message);
+      showNotification("error", "Error adding image: " + errorData.message);
     }
   };
 
   const handleUpdateImage = async () => {
     if (!updateImageFile && !updateImageDescription) {
-      return alert("Please provide a new image or description to update");
+      showNotification(
+        "info",
+        "Please provide a new image or description to update",
+      );
+      return;
     }
 
     const formData = new FormData();
@@ -261,7 +294,7 @@ export default function AdminPanel() {
     );
 
     if (res.ok) {
-      alert("Image Updated");
+      showNotification("success", "Image Updated");
       setUpdateImageId("");
       setUpdateImageFile(null);
       setUpdateImageDescription("");
@@ -271,7 +304,7 @@ export default function AdminPanel() {
       if (fileInput) fileInput.value = "";
     } else {
       const errorData = await res.json();
-      alert("Error updating image: " + errorData.message);
+      showNotification("error", "Error updating image: " + errorData.message);
     }
   };
 
@@ -279,7 +312,7 @@ export default function AdminPanel() {
     await fetch(`http://localhost:9000/api/admin/image/${deleteImageId}`, {
       method: "DELETE",
     });
-    alert("Image Deleted");
+    showNotification("success", "Image Deleted");
   };
 
   const handleGetImage = async () => {
@@ -288,7 +321,10 @@ export default function AdminPanel() {
       url = `http://localhost:9000/api/admin/image/${searchImageId}`;
     else if (searchImageLocationId)
       url = `http://localhost:9000/api/admin/image/location/${searchImageLocationId}`;
-    else return alert("Enter Image ID or Location ID");
+    else {
+      showNotification("info", "Enter Image ID or Location ID");
+      return;
+    }
 
     const res = await fetch(url);
     const data = await res.json();
@@ -309,6 +345,13 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-black text-white p-8">
+      {notification && (
+        <NotificationToast
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+        />
+      )}
       <h1 className="text-3xl font-bold mb-8 text-center">Admin Dashboard</h1>
 
       <div className="flex flex-wrap gap-6 justify-center">
@@ -695,5 +738,38 @@ function Button({
     >
       {text}
     </button>
+  );
+}
+
+function NotificationToast({
+  type,
+  message,
+  onClose,
+}: {
+  type: NotificationType;
+  message: string;
+  onClose: () => void;
+}) {
+  const typeClasses: Record<NotificationType, string> = {
+    success: "border-green-500 bg-green-900/90 text-green-100",
+    error: "border-red-500 bg-red-900/90 text-red-100",
+    info: "border-sky-500 bg-sky-900/90 text-sky-100",
+  };
+
+  return (
+    <div className="fixed top-6 right-6 z-50 w-88">
+      <div
+        className={`flex items-start gap-3 rounded-lg border p-4 shadow-lg backdrop-blur-sm ${typeClasses[type]}`}
+      >
+        <p className="flex-1 text-sm font-medium leading-relaxed">{message}</p>
+        <button
+          onClick={onClose}
+          className="text-lg leading-none opacity-80 transition-opacity hover:opacity-100"
+          aria-label="Close notification"
+        >
+          ×
+        </button>
+      </div>
+    </div>
   );
 }

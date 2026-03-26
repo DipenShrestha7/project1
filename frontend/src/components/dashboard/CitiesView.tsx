@@ -24,15 +24,23 @@ const CitiesView: React.FC<CitiesViewProps> = ({
   travelHistoryLocationIds,
   toggleLocationCollection,
 }) => {
-  const [activeDropdownId, setActiveDropdownId] = React.useState<number | null>(null);
-  const [activeWishlistDropdownId, setActiveWishlistDropdownId] = React.useState<number | null>(null);
+  const [activeDropdownId, setActiveDropdownId] = React.useState<number | null>(
+    null,
+  );
+  const [activeWishlistDropdownId, setActiveWishlistDropdownId] =
+    React.useState<number | null>(null);
 
   return (
-    <div onClick={() => { setActiveDropdownId(null); setActiveWishlistDropdownId(null); }}>
+    <div
+      onClick={() => {
+        setActiveDropdownId(null);
+        setActiveWishlistDropdownId(null);
+      }}
+    >
       <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400 mb-2">
         {currentCity?.name?.toUpperCase()}
       </h2>
-      <p className="mb-6 text-slate-700 dark:text-slate-300">
+      <p className="mb-6 text-justify text-slate-700 dark:text-slate-300">
         {currentCity?.description || "No description available"}
       </p>
 
@@ -49,7 +57,7 @@ const CitiesView: React.FC<CitiesViewProps> = ({
             <h3 className="text-lg font-semibold text-sky-800 dark:text-sky-300">
               {loc.name}
             </h3>
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-2">
               <div className="relative flex">
                 {wishlistLocationIds.has(loc.id) ? (
                   <div className="flex w-full">
@@ -65,7 +73,9 @@ const CitiesView: React.FC<CitiesViewProps> = ({
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
-                        setActiveWishlistDropdownId(activeWishlistDropdownId === loc.id ? null : loc.id);
+                        setActiveWishlistDropdownId(
+                          activeWishlistDropdownId === loc.id ? null : loc.id,
+                        );
                         setActiveDropdownId(null);
                       }}
                       className="flex items-center justify-center px-1.5 border-y border-r rounded-r-lg font-medium cursor-pointer transition bg-pink-100 border-pink-300 text-pink-700 hover:bg-pink-200 dark:bg-pink-700 dark:border-pink-600 dark:text-white dark:hover:bg-pink-600 relative"
@@ -125,7 +135,9 @@ const CitiesView: React.FC<CitiesViewProps> = ({
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
-                        setActiveDropdownId(activeDropdownId === loc.id ? null : loc.id);
+                        setActiveDropdownId(
+                          activeDropdownId === loc.id ? null : loc.id,
+                        );
                         setActiveWishlistDropdownId(null);
                       }}
                       className="flex items-center justify-center px-1.5 border-y border-r rounded-r-lg font-medium cursor-pointer transition bg-emerald-100 border-emerald-300 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-700 dark:border-emerald-600 dark:text-white dark:hover:bg-emerald-600"

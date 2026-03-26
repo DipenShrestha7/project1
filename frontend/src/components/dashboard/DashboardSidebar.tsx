@@ -1,8 +1,11 @@
 import React from "react";
-import { Heart, History, MapPin, Search } from "lucide-react";
+import { Heart, History, MapPin, Search, X, Sun, Moon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { User, Cities, ActiveSection } from "./types";
+import pfp from "../../assets/pfp.jpg";
 
 interface DashboardSidebarProps {
+  onAuthRequired: () => void;
   User?: User;
   preview: string | null;
   handleFile: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
@@ -16,6 +19,10 @@ interface DashboardSidebarProps {
   setSelectedLocation: (id: number | null) => void;
   wishlistCityIds: Set<number>;
   toggleCityWishlist: (id: number) => void;
+  onCloseMobile?: () => void;
+  onLogOut?: () => void;
+  darkMode: boolean;
+  toggleTheme: () => void;
 }
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
@@ -32,44 +39,89 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   setSelectedLocation,
   wishlistCityIds,
   toggleCityWishlist,
+  onAuthRequired,
+  onCloseMobile,
+  onLogOut,
+  darkMode,
+  toggleTheme,
 }) => {
+  const navigate = useNavigate();
+
+  const handleRestrictedNavigation = (section: ActiveSection) => {
+    if (!User?.id) {
+      onAuthRequired();
+      return;
+    }
+    setActiveSection(section);
+  };
+
   return (
-    <div className="w-72 bg-white dark:bg-gray-800 shadow-xl rounded-r-3xl p-6 flex flex-col gap-8 transition-colors shrink-0 overflow-y-auto">
-      <div className="flex items-center gap-4 bg-sky-600 text-white rounded-2xl p-4">
-        <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold">
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            id="fileInput"
-            onChange={handleFile}
-          />
-          {preview ? (
-            <img
-              src={preview}
-              alt="preview"
-              className="w-12 h-12 rounded-full object-cover cursor-pointer"
-              onClick={() => document.getElementById("fileInput")?.click()}
-            />
-          ) : (
-            <div
-              onClick={() => document.getElementById("fileInput")?.click()}
-              className="w-full h-full flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
-            >
-              <span className="text-xl text-gray-500 pb-1">+</span>
-            </div>
-          )}
-        </div>
-        <div className="leading-tight overflow-hidden">
-          <h2 className="text-base font-semibold truncate">{User?.name}</h2>
-          <p className="text-sm opacity-90 truncate">{User?.email}</p>
-        </div>
+    <div className="w-full h-full bg-white dark:bg-gray-800 shadow-xl md:rounded-r-3xl p-6 flex flex-col gap-6 transition-colors shrink-0 overflow-hidden">
+      {/* Mobile Title & Close Button */}
+      <div className="flex items-center justify-between mb-2 md:hidden">
+        <h1 className="font-bold text-2xl text-sky-600 dark:text-sky-400">
+          Menu
+        </h1>
+        <button
+          onClick={onCloseMobile}
+          className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition"
+        >
+          <X size={24} />
+        </button>
       </div>
 
-      <div>
+      {User ? (
+        <div className="flex items-center gap-4 bg-sky-600 text-white rounded-2xl p-4">
+          <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              id="fileInput"
+              onChange={handleFile}
+            />
+            {preview ? (
+              <img
+                src={pfp}
+                alt="preview"
+                className="w-12 h-12 rounded-full object-cover cursor-pointer"
+                onClick={() => document.getElementById("fileInput")?.click()}
+              />
+            ) : (
+              <div
+                onClick={() => document.getElementById("fileInput")?.click()}
+                className="w-full h-full flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
+              >
+                <span className="text-xl text-gray-500 pb-1">+</span>
+              </div>
+            )}
+          </div>
+          <div className="leading-tight overflow-hidden">
+            <h2 className="text-base font-semibold truncate">{User?.name}</h2>
+            <p className="text-sm opacity-90 truncate">{User?.email}</p>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => navigate("/login")}
+          className="flex items-center gap-4 bg-sky-600 text-white rounded-2xl p-4 cursor-pointer hover:bg-sky-700 transition"
+        >
+          <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold">
+            <span className="text-xl pb-1">?</span>
+          </div>
+          <div className="leading-tight overflow-hidden">
+            <h2 className="text-base font-semibold truncate">Welcome, Guest</h2>
+            <p className="text-sm opacity-90 truncate hover:underline">
+              Click here to sign in
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 min-h-0 flex flex-col">
         <div className="flex flex-col gap-2 mb-5">
           <button
-            onClick={() => setActiveSection("wishlist")}
+            onClick={() => handleRestrictedNavigation("wishlist")}
             className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
               activeSection === "wishlist"
                 ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
@@ -79,7 +131,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             <Heart size={18} /> Wishlist
           </button>
           <button
-            onClick={() => setActiveSection("travelHistory")}
+            onClick={() => handleRestrictedNavigation("travelHistory")}
             className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
               activeSection === "travelHistory"
                 ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
@@ -104,8 +156,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         </div>
 
         {activeSection === "cities" && (
-          <>
-            <div className="relative my-4">
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="relative mt-0 mb-3">
               <input
                 className="border border-black p-2 pl-8 bg-white text-black dark:bg-slate-800 text-sm rounded-xl w-full dark:border-white dark:text-white"
                 placeholder="Search cities"
@@ -118,7 +170,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 size={16}
               />
             </div>
-            <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+            <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto dashboard-scrollbar pr-1">
               {filteredCities.map((city) => (
                 <div
                   key={city.id}
@@ -164,7 +216,33 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 </div>
               ))}
             </div>
-          </>
+          </div>
+        )}
+      </div>
+
+      {/* Auth Buttons Anchored to Bottom */}
+      <div className="mt-auto pt-6 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3">
+        <button
+          onClick={toggleTheme}
+          className="p-3 text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-gray-700/50 rounded-xl hover:bg-sky-200 dark:hover:bg-gray-600 transition shrink-0"
+        >
+          {darkMode ? <Sun size={24} /> : <Moon size={24} />}
+        </button>
+
+        {User ? (
+          <button
+            onClick={onLogOut}
+            className="flex-1 py-3 bg-red-600/10 text-red-600 dark:bg-red-900/20 dark:text-red-400 font-semibold rounded-xl hover:bg-red-600 hover:text-white dark:hover:bg-red-800 transition shadow-sm"
+          >
+            Log Out
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate("/login")}
+            className="flex-1 py-3 bg-sky-600 text-white font-semibold rounded-xl hover:bg-sky-700 transition shadow-md"
+          >
+            Sign In
+          </button>
         )}
       </div>
     </div>

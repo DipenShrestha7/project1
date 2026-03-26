@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sun, Moon } from "lucide-react";
+import { LogIn, Menu, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type {
   User,
@@ -98,8 +98,7 @@ const Dashboard = () => {
     const fetchDashboard = async () => {
       const token = localStorage.getItem("token");
       if (!token) {
-        alert("Not logged in");
-        navigate("/login");
+        return;
       }
       try {
         const response = await fetch("http://localhost:9000/api/dashboard", {
@@ -108,7 +107,6 @@ const Dashboard = () => {
           },
         });
         if (!response.ok) {
-          navigate("/login");
           return;
         }
         const data = await response.json();
@@ -155,6 +153,9 @@ const Dashboard = () => {
   const [selectedCity, setSelectedCity] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [locationReviews, setLocationReviews] = useState<Review[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (selectedLocation) {
@@ -276,21 +277,22 @@ const Dashboard = () => {
     ? `https://www.google.com/maps?q=${parsedLatitude},${parsedLongitude}`
     : "";
   const mapEmbedUrl = hasValidCoordinates
-    ? `https://maps.google.com/maps?q=${parsedLatitude},${parsedLongitude}&z=15&output=embed`
+    ? `https://maps.google.com/maps?q=${parsedLatitude},${parsedLongitude}&z=12&output=embed`
     : "";
 
-  const LogOut = () => {
-    const confirmLogout = window.confirm("Are you sure you want to logout?");
-    if (confirmLogout) {
-      localStorage.removeItem("token");
-      navigate("/login");
-    }
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
   };
 
   const toggleLocationCollection = (
     locationId: number,
     collection: "wishlist" | "travelHistory",
   ) => {
+    if (!User?.id) {
+      setShowAuthModal(true);
+      return;
+    }
+
     if (collection === "wishlist") {
       setWishlistLocationIds((prev) => {
         const updated = new Set(prev);
@@ -463,7 +465,10 @@ const Dashboard = () => {
   };
 
   const toggleCityWishlist = async (cityId: number) => {
-    if (!User?.id) return;
+    if (!User?.id) {
+      setShowAuthModal(true);
+      return;
+    }
 
     const isAlreadyWishlisted = wishlistCityIds.has(cityId);
 
@@ -499,7 +504,10 @@ const Dashboard = () => {
   };
 
   const toggleLocationWishlist = async (locationId: number) => {
-    if (!User?.id) return;
+    if (!User?.id) {
+      setShowAuthModal(true);
+      return;
+    }
 
     const isAlreadyWishlisted = wishlistLocationIds.has(locationId);
 
@@ -535,26 +543,65 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900 text-slate-900 dark:text-slate-200 transition-colors">
-      {/* Sidebar */}
-      <DashboardSidebar
-        User={User}
-        preview={preview}
-        handleFile={handleFile}
-        activeSection={activeSection}
-        setActiveSection={setActiveSection}
-        searchCity={searchCity}
-        setSearchCity={setSearchCity}
-        filteredCities={filteredCities}
-        selectedCity={selectedCity}
-        setSelectedCity={setSelectedCity}
-        setSelectedLocation={setSelectedLocation}
-        wishlistCityIds={wishlistCityIds}
-        toggleCityWishlist={toggleCityWishlist}
-      />
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-gray-900 text-slate-900 dark:text-slate-200 transition-colors overflow-hidden">
+      {/* Mobile Top Header */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-800 shadow-sm z-30 shrink-0">
+        <h1 className="font-bold text-xl text-sky-600 dark:text-sky-400">
+          Dashboard
+        </h1>
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
+        >
+          <Menu size={24} />
+        </button>
+      </div>
+
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Wrapper */}
+      <div
+        className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 z-50 transition-transform duration-300 ease-in-out h-full md:h-screen w-72 shrink-0`}
+      >
+        <DashboardSidebar
+          onAuthRequired={() => setShowAuthModal(true)}
+          User={User}
+          preview={preview}
+          handleFile={handleFile}
+          activeSection={activeSection}
+          setActiveSection={(sec) => {
+            setActiveSection(sec);
+            setIsSidebarOpen(false); // Close sidebar on mobile when navigating
+          }}
+          searchCity={searchCity}
+          setSearchCity={setSearchCity}
+          filteredCities={filteredCities}
+          selectedCity={selectedCity}
+          setSelectedCity={(id) => {
+            setSelectedCity(id);
+            setIsSidebarOpen(false);
+          }}
+          setSelectedLocation={setSelectedLocation}
+          wishlistCityIds={wishlistCityIds}
+          toggleCityWishlist={toggleCityWishlist}
+          onCloseMobile={() => setIsSidebarOpen(false)}
+          onLogOut={handleLogoutClick}
+          darkMode={darkMode}
+          toggleTheme={() => {
+            setHasUserThemePreference(true);
+            setDarkMode((prev) => !prev);
+          }}
+        />
+      </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-10 overflow-auto">
+      <div className="flex-1 p-4 sm:p-6 md:p-10 overflow-y-auto w-full md:w-auto h-[calc(100vh-72px)] md:h-screen relative">
         {/* No city selected */}
         {activeSection === "cities" && !selectedCity && (
           <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-400 text-xl">
@@ -625,24 +672,71 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Dark Mode Toggle Button */}
-      <button
-        onClick={() => {
-          setHasUserThemePreference(true);
-          setDarkMode((prev) => !prev);
-        }}
-        className="fixed bottom-6 left-6 p-3 bg-sky-600 text-white rounded-full shadow-lg hover:bg-sky-700 transition z-50"
-      >
-        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
-      <button
-        onClick={() => {
-          LogOut();
-        }}
-        className="fixed bottom-6 left-40 px-3 py-2.5 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition z-50"
-      >
-        Log Out
-      </button>
+      {/* Authentication Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-sky-100 dark:bg-sky-900/50 text-sky-600 rounded-full flex items-center justify-center mb-6">
+              <LogIn size={32} />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 text-center">
+              Login Required
+            </h3>
+            <p className="text-slate-600 dark:text-slate-300 text-center mb-8">
+              Sign in or create an account to use this feature and save your
+              favorite locations.
+            </p>
+            <div className="flex flex-col gap-3 w-full">
+              <button
+                onClick={() => navigate("/login")}
+                className="w-full bg-sky-600 text-white font-semibold py-3 rounded-xl hover:bg-sky-700 transition"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="w-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/50 text-red-600 rounded-full flex items-center justify-center mb-6">
+              <LogOut size={32} />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 text-center">
+              Confirm Logout
+            </h3>
+            <p className="text-slate-600 dark:text-slate-300 text-center mb-8">
+              Are you sure you want to log out of your account?
+            </p>
+            <div className="flex flex-col gap-3 w-full">
+              <button
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  navigate("/login");
+                }}
+                className="w-full bg-red-600 text-white font-semibold py-3 rounded-xl hover:bg-red-700 transition"
+              >
+                Yes, Log Out
+              </button>
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="w-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
