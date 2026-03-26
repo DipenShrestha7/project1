@@ -1,4 +1,4 @@
-import sequelize from "sequelize";
+import sequelize from "../config/db.js";
 import { DataTypes } from "sequelize";
 
 const HistoryModel = sequelize.define(
@@ -22,7 +22,7 @@ const HistoryModel = sequelize.define(
 
     travel_date: {
       type: DataTypes.DATEONLY,
-      allowNull: true,
+      allowNull: false,
     },
 
     review_text: {

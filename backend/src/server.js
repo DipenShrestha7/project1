@@ -5,8 +5,8 @@ import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import authenticateUsersRoutes from "./routes/AuthenticateUsersRoute.js";
 import authenticateCityLocationRoutes from "./routes/AuthenticateCity&LocationRoute.js";
-// import authenticateWishlistRoute from "./routes/AuthenticateWishlistRoute.js";
-// import authenticateHistoryRoute from "./routes/AuthenticateHistoryRoute.js";
+import authenticateWishlistRoute from "./routes/AuthenticateWishlistRoute.js";
+import authenticateHistoryRoute from "./routes/AuthenticateHistoryRoute.js";
 import "dotenv/config";
 import path from "path";
 
@@ -30,8 +30,10 @@ const start = async () => {
 
     fastify.register(authenticateUsersRoutes, { prefix: "/api" });
     fastify.register(authenticateCityLocationRoutes, { prefix: "/api" });
-    // fastify.register(authenticateWishlistRoute, { prefix: "/api" });
-    // fastify.register(authenticateHistoryRoute, { prefix: "/api" });
+    fastify.register(authenticateWishlistRoute, { prefix: "/api" });
+    // `AuthenticateHistoryRoute` already defines routes starting with `/api/...`,
+    // so register it without an additional `/api` prefix to avoid `/api/api/...`.
+    fastify.register(authenticateHistoryRoute);
 
     const port = process.env.PORT || 9000;
     await fastify.listen({ port: port });

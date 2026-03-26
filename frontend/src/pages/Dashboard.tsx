@@ -1,69 +1,24 @@
 import { useState, useEffect } from "react";
-import {
-  MapPin,
-  Sun,
-  Moon,
-  Camera,
-  Heart,
-  History,
-  Search,
-  Check,
-} from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-type User = {
-  id?: number;
-  name?: string;
-  email?: string;
-};
-
-type City = {
-  city_id: number;
-  city_name: string;
-  description: string;
-  created_at: string;
-};
-
-type Cities = {
-  id: number;
-  name?: string;
-  description?: string;
-};
-
-type Location = {
-  location_id: number;
-  location_name: string;
-  description: string;
-  city_id: number;
-  created_at: string;
-  latitude: number | string;
-  longitude: number | string;
-};
-
-type Locations = {
-  id: number;
-  name: string;
-  description: string;
-  city_id: number;
-  latitude: number | string;
-  longitude: number | string;
-};
-
-type Image = {
-  image_id: number;
-  location_id: number;
-  image_url: string;
-  image_description: string;
-};
-
-type Images = {
-  id: number;
-  location_id: number;
-  image_url: string;
-  image_description: string;
-};
-
-type ActiveSection = "cities" | "wishlist" | "travelHistory";
+import type {
+  User,
+  WishlistItem,
+  City,
+  Cities,
+  Location,
+  Locations,
+  Image,
+  Images,
+  HistoryItem,
+  ActiveSection,
+  Review,
+} from "../components/dashboard/types";
+import DashboardSidebar from "../components/dashboard/DashboardSidebar";
+import CitiesView from "../components/dashboard/CitiesView";
+import WishlistView from "../components/dashboard/WishlistView";
+import TravelHistoryView from "../components/dashboard/TravelHistoryView";
+import LocationDetailsView from "../components/dashboard/LocationDetailsView";
 
 const Dashboard = () => {
   const [User, setUser] = useState<User>();
@@ -199,6 +154,29 @@ const Dashboard = () => {
 
   const [selectedCity, setSelectedCity] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [locationReviews, setLocationReviews] = useState<Review[]>([]);
+
+  useEffect(() => {
+    if (selectedLocation) {
+      const fetchReviews = async () => {
+        try {
+          const res = await fetch(
+            `http://localhost:9000/api/location/${selectedLocation}/reviews`,
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setLocationReviews(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch reviews:", err);
+        }
+      };
+      fetchReviews();
+    } else {
+      setLocationReviews([]);
+    }
+  }, [selectedLocation]);
+
   const [wishlistCityIds, setWishlistCityIds] = useState<Set<number>>(
     new Set(),
   );
@@ -208,6 +186,19 @@ const Dashboard = () => {
   const [travelHistoryLocationIds, setTravelHistoryLocationIds] = useState<
     Set<number>
   >(new Set());
+  const [travelHistoryItems, setTravelHistoryItems] = useState<HistoryItem[]>(
+    [],
+  );
+  const [expandedReviewLocationIds, setExpandedReviewLocationIds] = useState<
+    Set<number>
+  >(new Set());
+  const [reviewTextDrafts, setReviewTextDrafts] = useState<
+    Record<number, string>
+  >({});
+  const [ratingDrafts, setRatingDrafts] = useState<Record<number, number>>({});
+  const [savingReviewLocationId, setSavingReviewLocationId] = useState<
+    number | null
+  >(null);
   const [flippedImageIds, setFlippedImageIds] = useState<Set<number>>(
     new Set(),
   );
@@ -257,9 +248,6 @@ const Dashboard = () => {
   const wishlistCities = Cities.filter((city) => wishlistCityIds.has(city.id));
   const wishlistLocations = Locations.filter((location) =>
     wishlistLocationIds.has(location.id),
-  );
-  const travelHistoryLocations = Locations.filter((location) =>
-    travelHistoryLocationIds.has(location.id),
   );
   const filteredImages = Images.filter(
     (img) => img.location_id === selectedLocation,
@@ -316,168 +304,254 @@ const Dashboard = () => {
       return;
     }
 
-    setTravelHistoryLocationIds((prev) => {
-      const updated = new Set(prev);
-      if (updated.has(locationId)) {
-        updated.delete(locationId);
-      } else {
-        updated.add(locationId);
+    // This toggle is persisted in the database via `/api/history/visited`.
+    const userId = User?.id;
+    if (typeof userId !== "number") return;
+
+    (async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:9000/api/history/visited",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              location_id: locationId,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "History update failed");
+        }
+
+        // Refresh from DB so review/rating state stays consistent too.
+        await loadTravelHistory(userId);
+      } catch (error) {
+        console.error(error);
       }
-      return updated;
-    });
+    })();
   };
 
-  const toggleCityWishlist = (cityId: number) => {
-    setWishlistCityIds((prev) => {
+  const loadWishlist = async (userId: number) => {
+    try {
+      const response = await fetch(
+        `http://localhost:9000/api/wishlist/${userId}`,
+      );
+      if (!response.ok) return;
+      const data: WishlistItem[] = await response.json();
+      const cityIds = new Set<number>();
+      const locationIds = new Set<number>();
+
+      data.forEach((item) => {
+        if (item.city_id !== null) cityIds.add(item.city_id);
+        if (item.location_id !== null) locationIds.add(item.location_id);
+      });
+
+      setWishlistCityIds(cityIds);
+      setWishlistLocationIds(locationIds);
+    } catch (error) {
+      console.error("Failed to load wishlist:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (User?.id) {
+      loadWishlist(User.id);
+    }
+  }, [User?.id]);
+
+  const loadTravelHistory = async (userId: number) => {
+    try {
+      const response = await fetch(
+        `http://localhost:9000/api/history/${userId}`,
+      );
+      if (!response.ok) return;
+
+      const data: HistoryItem[] = await response.json();
+      // Backend sorts by \`travel_date DESC\`; keep the latest entry per location.
+      const latestByLocationId = new Map<number, HistoryItem>();
+      data.forEach((item) => {
+        if (!latestByLocationId.has(item.location_id)) {
+          latestByLocationId.set(item.location_id, item);
+        }
+      });
+
+      const items = Array.from(latestByLocationId.values());
+      setTravelHistoryItems(items);
+      setTravelHistoryLocationIds(new Set(items.map((i) => i.location_id)));
+
+      const reviewDrafts: Record<number, string> = {};
+      const ratingDraftsLocal: Record<number, number> = {};
+      items.forEach((i) => {
+        reviewDrafts[i.location_id] = i.review_text ?? "";
+        ratingDraftsLocal[i.location_id] = i.rating ?? 1;
+      });
+      setReviewTextDrafts(reviewDrafts);
+      setRatingDrafts(ratingDraftsLocal);
+      setExpandedReviewLocationIds(new Set());
+    } catch (error) {
+      console.error("Failed to load travel history:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (User?.id) {
+      loadTravelHistory(User.id);
+    }
+  }, [User?.id]);
+
+  const toggleReviewSection = (locationId: number) => {
+    // Toggle expanded/collapsed state
+    setExpandedReviewLocationIds((prev) => {
       const updated = new Set(prev);
-      if (updated.has(cityId)) {
-        updated.delete(cityId);
-      } else {
-        updated.add(cityId);
-      }
+      if (updated.has(locationId)) updated.delete(locationId);
+      else updated.add(locationId);
       return updated;
     });
+
+    // When opening, hydrate drafts from saved values.
+    const item = travelHistoryItems.find((i) => i.location_id === locationId);
+    setReviewTextDrafts((prev) => ({
+      ...prev,
+      [locationId]: item?.review_text ?? "",
+    }));
+    setRatingDrafts((prev) => ({
+      ...prev,
+      [locationId]: item?.rating ?? 1,
+    }));
+  };
+
+  const saveReviewForLocation = async (locationId: number) => {
+    if (!User?.id) return;
+    const review_text = reviewTextDrafts[locationId]?.trim() ?? "";
+    const rating = ratingDrafts[locationId] ?? 1;
+
+    setSavingReviewLocationId(locationId);
+    try {
+      const response = await fetch("http://localhost:9000/api/history/review", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: User.id,
+          location_id: locationId,
+          review_text,
+          rating,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to save review");
+      }
+
+      const updated: HistoryItem = await response.json();
+      setTravelHistoryItems((prev) =>
+        prev.map((i) => (i.location_id === locationId ? updated : i)),
+      );
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setSavingReviewLocationId(null);
+    }
+  };
+
+  const toggleCityWishlist = async (cityId: number) => {
+    if (!User?.id) return;
+
+    const isAlreadyWishlisted = wishlistCityIds.has(cityId);
+
+    try {
+      const response = await fetch("http://localhost:9000/api/wishlist", {
+        method: isAlreadyWishlisted ? "DELETE" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: User.id,
+          city_id: cityId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Wishlist update failed");
+      }
+
+      setWishlistCityIds((prev) => {
+        const updated = new Set(prev);
+        if (updated.has(cityId)) {
+          updated.delete(cityId);
+        } else {
+          updated.add(cityId);
+        }
+        return updated;
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const toggleLocationWishlist = async (locationId: number) => {
+    if (!User?.id) return;
+
+    const isAlreadyWishlisted = wishlistLocationIds.has(locationId);
+
+    try {
+      const response = await fetch("http://localhost:9000/api/wishlist", {
+        method: isAlreadyWishlisted ? "DELETE" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: User.id,
+          location_id: locationId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Wishlist update failed");
+      }
+
+      setWishlistLocationIds((prev) => {
+        const updated = new Set(prev);
+        if (updated.has(locationId)) {
+          updated.delete(locationId);
+        } else {
+          updated.add(locationId);
+        }
+        return updated;
+      });
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900 text-slate-900 dark:text-slate-200 transition-colors">
       {/* Sidebar */}
-      <div className="w-72 bg-white dark:bg-gray-800 shadow-xl rounded-r-3xl p-6 flex flex-col gap-8 transition-colors">
-        <div className="flex items-center gap-4 bg-sky-600 text-white rounded-2xl p-4">
-          <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold">
-            <input
-              type="file"
-              accept="image"
-              className="hidden"
-              id="fileInput"
-              onChange={handleFile}
-            />
-            {preview ? (
-              <img
-                src={preview}
-                alt="preview"
-                className="w-40 h-40 rounded-lg object-cover cursor-pointer"
-                onClick={() => document.getElementById("fileInput")?.click()}
-              />
-            ) : (
-              <div
-                onClick={() => document.getElementById("fileInput")?.click()}
-                className="w-40 h-40 border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
-              >
-                <span className="text-4xl text-gray-500 p-4 mb-2">+</span>
-              </div>
-            )}
-          </div>
-          <div className="leading-tight">
-            <h2 className="text-base font-semibold">{User?.name}</h2>
-            <p className="text-sm opacity-90">{User?.email}</p>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex flex-col gap-2 mb-5">
-            <button
-              onClick={() => setActiveSection("wishlist")}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
-                activeSection === "wishlist"
-                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                  : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
-              }`}
-            >
-              <Heart size={18} /> Wishlist
-            </button>
-            <button
-              onClick={() => setActiveSection("travelHistory")}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
-                activeSection === "travelHistory"
-                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                  : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
-              }`}
-            >
-              <History size={18} /> Travel History
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("cities");
-                setSelectedLocation(null);
-              }}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
-                activeSection === "cities"
-                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                  : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
-              }`}
-            >
-              <MapPin size={18} /> Cities
-            </button>
-          </div>
-
-          {activeSection === "cities" && (
-            <>
-              <div className="relative my-4">
-                <input
-                  className="border border-black p-2 pl-8 bg-white text-black dark:bg-slate-800 text-sm rounded-xl w-full dark:border-white dark:text-white"
-                  placeholder="Search cities"
-                  type="text"
-                  value={searchCity}
-                  onChange={(e) => setSearchCity(e.target.value)}
-                />
-                <Search
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"
-                  size={16}
-                />
-              </div>
-              <div className="flex flex-col gap-2 max-h-72 overflow-auto pr-1">
-                {filteredCities.map((city) => (
-                  <div
-                    key={city.id}
-                    onClick={() => {
-                      setSelectedCity(city.id);
-                      setSelectedLocation(null);
-                    }}
-                    className={`flex items-center justify-between gap-2 px-4 py-3 rounded-xl transition cursor-pointer ${
-                      selectedCity === city.id
-                        ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                        : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <MapPin size={18} className="shrink-0" />
-                      <span className="truncate">
-                        {city.name?.toUpperCase()}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleCityWishlist(city.id);
-                      }}
-                      className="p-1.5 rounded-full hover:bg-white/40 dark:hover:bg-black/20 transition"
-                      aria-label={
-                        wishlistCityIds.has(city.id)
-                          ? `Remove ${city.name} from city wishlist`
-                          : `Add ${city.name} to city wishlist`
-                      }
-                    >
-                      <Heart
-                        size={16}
-                        fill={
-                          wishlistCityIds.has(city.id) ? "currentColor" : "none"
-                        }
-                        className={
-                          wishlistCityIds.has(city.id)
-                            ? "text-pink-600 dark:text-pink-300"
-                            : "text-slate-500 dark:text-slate-300"
-                        }
-                      />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+      <DashboardSidebar
+        User={User}
+        preview={preview}
+        handleFile={handleFile}
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
+        searchCity={searchCity}
+        setSearchCity={setSearchCity}
+        filteredCities={filteredCities}
+        selectedCity={selectedCity}
+        setSelectedCity={setSelectedCity}
+        setSelectedLocation={setSelectedLocation}
+        wishlistCityIds={wishlistCityIds}
+        toggleCityWishlist={toggleCityWishlist}
+      />
 
       {/* Main Content */}
       <div className="flex-1 p-10 overflow-auto">
@@ -490,382 +564,64 @@ const Dashboard = () => {
 
         {/* City selected but no location selected */}
         {activeSection === "cities" && selectedCity && !selectedLocation && (
-          <div>
-            {/* City Name */}
-            <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400 mb-2">
-              {currentCity?.name?.toUpperCase()}
-            </h2>
-            {/* City Description */}
-            <p className="mb-6 text-slate-700 dark:text-slate-300">
-              {currentCity?.description || "No description available"}
-            </p>
-
-            <h3 className="text-2xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
-              Locations
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredLocations.map((loc) => (
-                <div
-                  key={loc.id}
-                  onClick={() => setSelectedLocation(loc.id)}
-                  className="cursor-pointer bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md hover:shadow-lg transition"
-                >
-                  <h3 className="text-lg font-semibold text-sky-800 dark:text-sky-300">
-                    {loc.name}
-                  </h3>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleLocationCollection(loc.id, "wishlist");
-                      }}
-                      className={`flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-medium cursor-pointer transition ${
-                        wishlistLocationIds.has(loc.id)
-                          ? "bg-pink-100 border-pink-300 text-pink-700 dark:bg-pink-700 dark:border-pink-600 dark:text-white"
-                          : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
-                      }`}
-                    >
-                      <Heart size={14} />
-                      {wishlistLocationIds.has(loc.id)
-                        ? "In Wishlist"
-                        : "Add to Wishlist"}
-                    </button>
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleLocationCollection(loc.id, "travelHistory");
-                      }}
-                      className={`flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-medium cursor-pointer transition ${
-                        travelHistoryLocationIds.has(loc.id)
-                          ? "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-700 dark:border-emerald-600 dark:text-white"
-                          : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
-                      }`}
-                    >
-                      <History size={14} />
-                      {travelHistoryLocationIds.has(loc.id)
-                        ? "Visited"
-                        : "Mark Visited"}
-                    </button>
-                  </div>
-                  <p className="text-slate-500 dark:text-slate-400 mt-1">
-                    Tap to view images
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <CitiesView
+            currentCity={currentCity}
+            filteredLocations={filteredLocations}
+            setSelectedLocation={setSelectedLocation}
+            wishlistLocationIds={wishlistLocationIds}
+            toggleLocationWishlist={toggleLocationWishlist}
+            travelHistoryLocationIds={travelHistoryLocationIds}
+            toggleLocationCollection={toggleLocationCollection}
+          />
         )}
 
         {activeSection === "wishlist" && (
-          <div>
-            <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
-              Wishlist
-            </h2>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-              <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
-                <h3 className="text-xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
-                  City Wishlist
-                </h3>
-                {wishlistCities.length === 0 ? (
-                  <p className="text-slate-500 dark:text-slate-400">
-                    No cities added yet.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {wishlistCities.map((city) => (
-                      <div
-                        key={city.id}
-                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-gray-700/60"
-                      >
-                        <div>
-                          <p className="font-semibold text-sky-800 dark:text-sky-300">
-                            {city.name?.toUpperCase()}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                            {city.description || "No description available"}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setActiveSection("cities");
-                            setSelectedCity(city.id);
-                            setSelectedLocation(null);
-                          }}
-                          className="px-3 py-1.5 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition text-sm"
-                        >
-                          View
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
-                <h3 className="text-xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
-                  Location Wishlist
-                </h3>
-                {wishlistLocations.length === 0 ? (
-                  <p className="text-slate-500 dark:text-slate-400">
-                    No locations added yet.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {wishlistLocations.map((loc) => (
-                      <div
-                        key={loc.id}
-                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-gray-700/60"
-                      >
-                        <div>
-                          <p className="font-semibold text-sky-800 dark:text-sky-300">
-                            {loc.name}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                            {loc.description}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setActiveSection("cities");
-                            setSelectedCity(loc.city_id);
-                            setSelectedLocation(loc.id);
-                          }}
-                          className="px-3 py-1.5 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition text-sm"
-                        >
-                          Open
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            </div>
-
-            {wishlistCities.length === 0 && wishlistLocations.length === 0 && (
-              <p className="text-slate-500 dark:text-slate-400 mt-5">
-                Add cities from the Cities sidebar heart icon and locations from
-                city cards.
-              </p>
-            )}
-          </div>
+          <WishlistView
+            wishlistCities={wishlistCities}
+            wishlistLocations={wishlistLocations}
+            setActiveSection={setActiveSection}
+            setSelectedCity={setSelectedCity}
+            setSelectedLocation={setSelectedLocation}
+          />
         )}
 
         {activeSection === "travelHistory" && (
-          <div>
-            <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
-              Travel History
-            </h2>
-            {travelHistoryLocations.length === 0 ? (
-              <p className="text-slate-500 dark:text-slate-400">
-                No visited locations yet.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {travelHistoryLocations.map((loc) => (
-                  <div
-                    key={loc.id}
-                    className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md"
-                  >
-                    <h3 className="text-lg font-semibold text-sky-800 dark:text-sky-300">
-                      {loc.name}
-                    </h3>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1 mb-3">
-                      {loc.description}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setActiveSection("cities");
-                        setSelectedCity(loc.city_id);
-                        setSelectedLocation(loc.id);
-                      }}
-                      className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition"
-                    >
-                      Open Location
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <TravelHistoryView
+            travelHistoryItems={travelHistoryItems}
+            Locations={Locations}
+            expandedReviewLocationIds={expandedReviewLocationIds}
+            toggleReviewSection={toggleReviewSection}
+            reviewTextDrafts={reviewTextDrafts}
+            setReviewTextDrafts={setReviewTextDrafts}
+            ratingDrafts={ratingDrafts}
+            setRatingDrafts={setRatingDrafts}
+            savingReviewLocationId={savingReviewLocationId}
+            saveReviewForLocation={saveReviewForLocation}
+            setActiveSection={setActiveSection}
+            setSelectedCity={setSelectedCity}
+            setSelectedLocation={setSelectedLocation}
+          />
         )}
 
         {/* Location selected */}
         {activeSection === "cities" && selectedLocation && (
-          <div>
-            {/* Location Name */}
-            <div className="mb-6">
-              <button
-                onClick={() => setSelectedLocation(null)}
-                className="mr-4 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition"
-              >
-                ← Back
-              </button>
-              <h2 className="inline text-3xl font-semibold text-sky-900 dark:text-sky-400">
-                {currentLocation?.name}
-              </h2>
-
-              <p className="mt-2 text-slate-700 dark:text-slate-300">
-                {currentLocation?.description}
-              </p>
-
-              {currentLocation && (
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() =>
-                      toggleLocationCollection(currentLocation.id, "wishlist")
-                    }
-                    className={`flex items-center gap-2 text-sm px-3.5 py-2 rounded-lg border font-medium transition cursor-pointer ${
-                      wishlistLocationIds.has(currentLocation.id)
-                        ? "bg-pink-100 border-pink-300 text-pink-700 dark:bg-pink-700 dark:border-pink-600 dark:text-white"
-                        : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
-                    }`}
-                  >
-                    <Heart size={15} />
-                    {wishlistLocationIds.has(currentLocation.id)
-                      ? "In Wishlist"
-                      : "Add to Wishlist"}
-                    {wishlistLocationIds.has(currentLocation.id) && (
-                      <Check size={15} />
-                    )}
-                  </button>
-                  <button
-                    onClick={() =>
-                      toggleLocationCollection(
-                        currentLocation.id,
-                        "travelHistory",
-                      )
-                    }
-                    className={`flex items-center gap-2 text-sm px-3.5 py-2 rounded-lg border font-medium transition cursor-pointer ${
-                      travelHistoryLocationIds.has(currentLocation.id)
-                        ? "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-700 dark:border-emerald-600 dark:text-white"
-                        : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
-                    }`}
-                  >
-                    <History size={15} />
-                    {travelHistoryLocationIds.has(currentLocation.id)
-                      ? "Visited"
-                      : "Mark Visited"}
-                    {travelHistoryLocationIds.has(currentLocation.id) && (
-                      <Check size={15} />
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {hasValidCoordinates ? (
-                <div className="mt-4 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-md">
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="text-sm text-slate-600 dark:text-slate-300">
-                      Coordinates: {parsedLatitude.toFixed(6)},{" "}
-                      {parsedLongitude.toFixed(6)}
-                    </p>
-                    <a
-                      href={googleMapsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm text-sky-600 dark:text-sky-400 hover:underline"
-                    >
-                      Open in Google Maps
-                    </a>
-                  </div>
-                  <iframe
-                    title="Location map"
-                    src={mapEmbedUrl}
-                    className="w-full h-72 rounded-xl border border-slate-200 dark:border-slate-700"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                </div>
-              ) : (
-                <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
-                  Map unavailable: this location is missing valid
-                  latitude/longitude.
-                </p>
-              )}
-
-              <div className="py-4 w-1/3"></div>
-              <div className="flex items-center gap-2 mb-6">
-                <Camera className="text-sky-600" />
-                <h2 className="text-3xl font-semibold text-sky-900">
-                  Location Images
-                </h2>
-              </div>
-
-              {/* Images grid follows here */}
-            </div>
-
-            {filteredImages.length === 0 && (
-              <p className="text-slate-500 dark:text-slate-400">
-                No images available
-              </p>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredImages.map((img) => (
-                <div
-                  key={img.id}
-                  className="h-64 cursor-pointer perspective"
-                  onClick={() => {
-                    const newFlipped = new Set(flippedImageIds);
-                    if (newFlipped.has(img.id)) {
-                      newFlipped.delete(img.id);
-                    } else {
-                      newFlipped.add(img.id);
-                    }
-                    setFlippedImageIds(newFlipped);
-                  }}
-                >
-                  <div
-                    className="relative w-full h-full transition-transform duration-500 ease-in-out"
-                    style={{
-                      transformStyle: "preserve-3d",
-                      transform: flippedImageIds.has(img.id)
-                        ? "rotateY(180deg)"
-                        : "rotateY(0deg)",
-                    }}
-                  >
-                    {/* Front - Image */}
-                    <div
-                      className="absolute w-full h-full bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition"
-                      style={{
-                        backfaceVisibility: "hidden",
-                      }}
-                    >
-                      <img
-                        src={img.image_url}
-                        className="w-full h-full object-cover"
-                        alt={img.image_description}
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-3 text-white text-xs">
-                        Click to see description
-                      </div>
-                    </div>
-
-                    {/* Back - Description */}
-                    <div
-                      className="absolute w-full h-full bg-sky-600 dark:bg-sky-700 rounded-2xl shadow-md overflow-hidden p-6 flex flex-col justify-between"
-                      style={{
-                        backfaceVisibility: "hidden",
-                        transform: "rotateY(180deg)",
-                      }}
-                    >
-                      <div>
-                        <h3 className="text-white font-semibold text-lg mb-3">
-                          Description
-                        </h3>
-                        <p className="text-white/90 text-sm leading-relaxed">
-                          {img.image_description || "No description available"}
-                        </p>
-                      </div>
-                      <div className="text-white/70 text-xs text-center">
-                        Click to go back
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <LocationDetailsView
+            currentLocation={currentLocation}
+            parsedLatitude={parsedLatitude}
+            parsedLongitude={parsedLongitude}
+            hasValidCoordinates={hasValidCoordinates}
+            googleMapsUrl={googleMapsUrl}
+            mapEmbedUrl={mapEmbedUrl}
+            wishlistLocationIds={wishlistLocationIds}
+            toggleLocationWishlist={toggleLocationWishlist}
+            travelHistoryLocationIds={travelHistoryLocationIds}
+            toggleLocationCollection={toggleLocationCollection}
+            filteredImages={filteredImages}
+            flippedImageIds={flippedImageIds}
+            setFlippedImageIds={setFlippedImageIds}
+            setSelectedLocation={setSelectedLocation}
+            locationReviews={locationReviews}
+          />
         )}
       </div>
 

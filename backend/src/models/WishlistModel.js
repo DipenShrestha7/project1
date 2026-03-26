@@ -1,4 +1,4 @@
-import sequelize from "sequelize";
+import sequelize from "../config/db.js";
 import { DataTypes } from "sequelize";
 
 const WishlistModel = sequelize.define(
