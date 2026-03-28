@@ -2,6 +2,7 @@ export type User = {
   id?: number;
   name?: string;
   email?: string;
+  profile_image?: string | null;
 };
 
 export type WishlistItem = {
@@ -67,7 +68,7 @@ export type HistoryItem = {
   rating: number | null;
 };
 
-export type ActiveSection = "cities" | "wishlist" | "travelHistory";
+export type ActiveSection = "cities" | "chatbot" | "wishlist" | "travelHistory";
 
 export type Review = {
   user_name: string;

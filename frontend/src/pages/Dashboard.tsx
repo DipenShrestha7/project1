@@ -16,6 +16,7 @@ import type {
 } from "../components/dashboard/types";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import CitiesView from "../components/dashboard/CitiesView";
+import ChatbotView from "../components/dashboard/ChatbotView";
 import WishlistView from "../components/dashboard/WishlistView";
 import TravelHistoryView from "../components/dashboard/TravelHistoryView";
 import LocationDetailsView from "../components/dashboard/LocationDetailsView";
@@ -200,6 +201,11 @@ const Dashboard = () => {
   const [savingReviewLocationId, setSavingReviewLocationId] = useState<
     number | null
   >(null);
+  const [deletingReviewLocationId, setDeletingReviewLocationId] = useState<
+    number | null
+  >(null);
+  const [confirmDeleteReviewLocationId, setConfirmDeleteReviewLocationId] =
+    useState<number | null>(null);
   const [flippedImageIds, setFlippedImageIds] = useState<Set<number>>(
     new Set(),
   );
@@ -464,6 +470,55 @@ const Dashboard = () => {
     }
   };
 
+  const initiateDeleteReview = (locationId: number) => {
+    setConfirmDeleteReviewLocationId(locationId);
+  };
+
+  const deleteReviewForLocation = async (locationId: number) => {
+    if (!User?.id) return;
+
+    setDeletingReviewLocationId(locationId);
+    setConfirmDeleteReviewLocationId(null);
+    try {
+      const response = await fetch("http://localhost:9000/api/history/review", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: User.id,
+          location_id: locationId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete review");
+      }
+
+      const updated: HistoryItem = await response.json();
+      setTravelHistoryItems((prev) =>
+        prev.map((i) => (i.location_id === locationId ? updated : i)),
+      );
+      setReviewTextDrafts((prev) => {
+        const next = { ...prev };
+        delete next[locationId];
+        return next;
+      });
+      setRatingDrafts((prev) => {
+        const next = { ...prev };
+        delete next[locationId];
+        return next;
+      });
+      // Close the expanded review section after successful deletion
+      toggleReviewSection(locationId);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setDeletingReviewLocationId(null);
+    }
+  };
+
   const toggleCityWishlist = async (cityId: number) => {
     if (!User?.id) {
       setShowAuthModal(true);
@@ -632,6 +687,8 @@ const Dashboard = () => {
           />
         )}
 
+        {activeSection === "chatbot" && <ChatbotView />}
+
         {activeSection === "travelHistory" && (
           <TravelHistoryView
             travelHistoryItems={travelHistoryItems}
@@ -644,6 +701,11 @@ const Dashboard = () => {
             setRatingDrafts={setRatingDrafts}
             savingReviewLocationId={savingReviewLocationId}
             saveReviewForLocation={saveReviewForLocation}
+            deleteReviewForLocation={deleteReviewForLocation}
+            initiateDeleteReview={initiateDeleteReview}
+            deletingReviewLocationId={deletingReviewLocationId}
+            confirmDeleteReviewLocationId={confirmDeleteReviewLocationId}
+            setConfirmDeleteReviewLocationId={setConfirmDeleteReviewLocationId}
             setActiveSection={setActiveSection}
             setSelectedCity={setSelectedCity}
             setSelectedLocation={setSelectedLocation}
@@ -688,7 +750,7 @@ const Dashboard = () => {
             </p>
             <div className="flex flex-col gap-3 w-full">
               <button
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/ghumphir/login")}
                 className="w-full bg-sky-600 text-white font-semibold py-3 rounded-xl hover:bg-sky-700 transition"
               >
                 Sign In
@@ -721,7 +783,7 @@ const Dashboard = () => {
               <button
                 onClick={() => {
                   localStorage.removeItem("token");
-                  navigate("/login");
+                  navigate("/ghumphir/login");
                 }}
                 className="w-full bg-red-600 text-white font-semibold py-3 rounded-xl hover:bg-red-700 transition"
               >

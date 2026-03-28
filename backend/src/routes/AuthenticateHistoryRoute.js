@@ -18,10 +18,12 @@ function authenticateHistoryRoute(fastify) {
 
     try {
       HistoryModel.belongsTo(UsersModel, { foreignKey: "user_id" });
-      
+
       const historyItems = await HistoryModel.findAll({
         where: { location_id },
-        include: [{ model: UsersModel, attributes: ["user_name", "profile_image"] }],
+        include: [
+          { model: UsersModel, attributes: ["user_name", "profile_image"] },
+        ],
         order: [["travel_date", "DESC"]],
       });
 
@@ -106,6 +108,29 @@ function authenticateHistoryRoute(fastify) {
         : Number.isFinite(parsedRating)
           ? Math.min(5, Math.max(1, parsedRating))
           : null;
+
+    await history.save();
+
+    return reply.send(history);
+  });
+
+  fastify.delete("/api/history/review", async (request, reply) => {
+    const { user_id, location_id } = request.body;
+
+    const history = await HistoryModel.findOne({
+      where: { user_id, location_id },
+      order: [["travel_date", "DESC"]],
+    });
+
+    if (!history) {
+      return reply
+        .status(404)
+        .send({ error: "History entry not found for this user/location" });
+    }
+
+    // Delete the review by setting text and rating to null
+    history.review_text = null;
+    history.rating = null;
 
     await history.save();
 

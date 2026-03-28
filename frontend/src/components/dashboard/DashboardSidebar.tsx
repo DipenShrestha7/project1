@@ -1,5 +1,14 @@
 import React from "react";
-import { Heart, History, MapPin, Search, X, Sun, Moon } from "lucide-react";
+import {
+  Heart,
+  History,
+  MapPin,
+  Search,
+  X,
+  Sun,
+  Moon,
+  MessageCircle,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { User, Cities, ActiveSection } from "./types";
 import pfp from "../../assets/pfp.jpg";
@@ -82,18 +91,25 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             />
             {preview ? (
               <img
-                src={pfp}
+                src={preview}
                 alt="preview"
                 className="w-12 h-12 rounded-full object-cover cursor-pointer"
                 onClick={() => document.getElementById("fileInput")?.click()}
               />
-            ) : (
-              <div
+            ) : User?.profile_image ? (
+              <img
+                src={`http://localhost:9000${User.profile_image}`}
+                alt="profile"
+                className="w-12 h-12 rounded-full object-cover cursor-pointer"
                 onClick={() => document.getElementById("fileInput")?.click()}
-                className="w-full h-full flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
-              >
-                <span className="text-xl text-gray-500 pb-1">+</span>
-              </div>
+              />
+            ) : (
+              <img
+                src={pfp}
+                alt="default"
+                className="w-12 h-12 rounded-full object-cover cursor-pointer"
+                onClick={() => document.getElementById("fileInput")?.click()}
+              />
             )}
           </div>
           <div className="leading-tight overflow-hidden">
@@ -120,6 +136,16 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
       <div className="flex-1 min-h-0 flex flex-col">
         <div className="flex flex-col gap-2 mb-5">
+          <button
+            onClick={() => setActiveSection("chatbot")}
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
+              activeSection === "chatbot"
+                ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
+                : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+            }`}
+          >
+            <MessageCircle size={18} /> Chatbot
+          </button>
           <button
             onClick={() => handleRestrictedNavigation("wishlist")}
             className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${

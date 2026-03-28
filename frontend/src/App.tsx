@@ -6,9 +6,9 @@ import Admin from "./pages/Admin.tsx";
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/adminnimda" element={<Admin />} />
+      <Route path="/ghumphir/login" element={<Login />} />
+      <Route path="/ghumphir/dashboard" element={<Dashboard />} />
+      <Route path="/ghumphir/adminnimda" element={<Admin />} />
     </Routes>
   );
 }

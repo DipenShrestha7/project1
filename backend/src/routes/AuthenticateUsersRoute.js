@@ -133,6 +133,83 @@ function authenticateUsersRoute(fastify) {
       return reply.code(500).send({ error: err });
     }
   });
+
+  // UPDATE PROFILE IMAGE
+  fastify.patch("/api/user/profile-image", async (req, reply) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return reply.code(401).send({ message: "No token provided" });
+      }
+
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      const { profile_image } = req.body;
+
+      if (!profile_image) {
+        return reply
+          .code(400)
+          .send({ error: "profile_image path is required" });
+      }
+
+      const user = await UsersModel.findOne({
+        where: { user_id: decoded.user_id },
+      });
+
+      if (!user) {
+        return reply.code(404).send({ error: "User not found" });
+      }
+
+      // Update user profile image
+      await UsersModel.update(
+        { profile_image },
+        { where: { user_id: decoded.user_id } },
+      );
+
+      return {
+        message: "Profile image updated successfully",
+        profile_image,
+      };
+    } catch (err) {
+      console.error(err);
+      return reply.code(500).send({ error: "Failed to update profile image" });
+    }
+  });
+
+  // UPDATE PROFILE IMAGE WITH FILE UPLOAD
+  fastify.patch("/api/user/profile-image/upload", async (req, reply) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return reply.code(401).send({ message: "No token provided" });
+      }
+
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      const data = await req.file(); // get uploaded file
+      const uploadPath = path.join(process.cwd(), "uploads", data.filename);
+      const writeStream = fs.createWriteStream(uploadPath);
+      await data.file.pipe(writeStream);
+
+      const profileImagePath = `/uploads/${data.filename}`;
+
+      // Update user profile image
+      await UsersModel.update(
+        { profile_image: profileImagePath },
+        { where: { user_id: decoded.user_id } },
+      );
+
+      return {
+        message: "Profile image updated successfully",
+        profile_image: profileImagePath,
+      };
+    } catch (err) {
+      console.error(err);
+      return reply.code(500).send({ error: "Failed to update profile image" });
+    }
+  });
 }
 
 export default authenticateUsersRoute;

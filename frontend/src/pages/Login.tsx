@@ -81,7 +81,7 @@ const App = () => {
       if (isLogin) {
         localStorage.setItem("token", data.token);
         setNotice(null);
-        navigate("/dashboard");
+        navigate("/ghumphir/dashboard");
       } else {
         setUser(body);
         setNotice({
