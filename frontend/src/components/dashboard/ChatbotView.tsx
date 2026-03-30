@@ -18,28 +18,13 @@ type ChatMessage = {
 type PastChat = {
   id: string;
   title: string;
-  preview: string;
 };
 
-const SAMPLE_PAST_CHATS: PastChat[] = [
-  {
-    id: "1",
-    title: "Kathmandu Travel Guide",
-    preview: "Best places to visit in Kathmandu...",
-  },
-  {
-    id: "2",
-    title: "Pokhara Hiking Routes",
-    preview: "What are the best hiking trails near Pokhara...",
-  },
-  {
-    id: "3",
-    title: "Chitwan Safari Tips",
-    preview: "Tips for jungle safari in Chitwan...",
-  },
-];
+type ChatbotViewProps = {
+  userId?: number;
+};
 
-const ChatbotView = () => {
+const ChatbotView = ({ userId }: ChatbotViewProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "ai",
@@ -49,8 +34,35 @@ const ChatbotView = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [pastChats, setPastChats] = useState<PastChat[]>(SAMPLE_PAST_CHATS);
+  const [pastChats, setPastChats] = useState<PastChat[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Fetch chat sessions from backend
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!userId) return;
+      try {
+        const res = await fetch("http://localhost:9000/api/sessions", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const formattedChats: PastChat[] = data.map(
+            (session: { session_id: number; title: string }) => ({
+              id: session.session_id.toString(),
+              title: session.title,
+            }),
+          );
+          setPastChats(formattedChats);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchSessions();
+  }, [userId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,19 +72,56 @@ const ChatbotView = () => {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
 
+    if (!userId) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "ai",
+          text: "Please log in first so I can save this chat session.",
+        },
+      ]);
+      return;
+    }
+
     const userMsg: ChatMessage = { role: "user", text: trimmed };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8000/chat", {
+      const sessionId = selectedChatId ?? null;
+      const res = await fetch("http://localhost:9000/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, session_id: "user-1" }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: sessionId || null,
+          message: trimmed,
+        }),
       });
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "ai", text: data.reply }]);
+
+      // Persist session ID for subsequent messages
+      if (data.session_id && !selectedChatId) {
+        const newSessionId = data.session_id.toString();
+        setSelectedChatId(newSessionId);
+
+        // Add new session to pastChats sidebar
+        const newChat: PastChat = {
+          id: newSessionId,
+          title: trimmed.slice(0, 40),
+        };
+        setPastChats((prev) => [newChat, ...prev]);
+      }
+
+      // Add AI response to chat
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", text: data.reply || "Message saved." },
+      ]);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -101,8 +150,21 @@ const ChatbotView = () => {
     setSelectedChatId(null);
   };
 
-  const handleDeleteChat = (chatId: string) => {
-    setPastChats((prev) => prev.filter((chat) => chat.id !== chatId));
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      await fetch(`http://localhost:9000/api/sessions/${chatId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setPastChats((prev) => prev.filter((chat) => chat.id !== chatId));
+      if (selectedChatId === chatId) {
+        setSelectedChatId(null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleSelectChat = (chatId: string) => {
@@ -151,9 +213,6 @@ const ChatbotView = () => {
                   }`}
                 >
                   {chat.title}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                  {chat.preview}
                 </p>
                 <button
                   onClick={(e) => {

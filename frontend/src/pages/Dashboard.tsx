@@ -35,7 +35,6 @@ const Dashboard = () => {
       try {
         const response = await fetch("http://localhost:9000/api/admin/cities");
         const data: City[] = await response.json();
-        console.log(data);
         const formatted: Cities[] = data.map((item) => ({
           id: item.city_id,
           name: item.city_name,
@@ -43,7 +42,7 @@ const Dashboard = () => {
         }));
         setCities(formatted);
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     };
     fetchCityData();
@@ -56,7 +55,6 @@ const Dashboard = () => {
           "http://localhost:9000/api/admin/locations",
         );
         const data: Location[] = await response.json();
-        console.log(data);
         const formatted: Locations[] = data.map((item) => ({
           id: item.location_id,
           name: item.location_name,
@@ -67,7 +65,7 @@ const Dashboard = () => {
         }));
         setLocations(formatted);
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     };
     fetchLocationData();
@@ -78,7 +76,6 @@ const Dashboard = () => {
       try {
         const response = await fetch("http://localhost:9000/api/admin/images");
         const data: Image[] = await response.json();
-        console.log(data);
         const formatted: Images[] = data.map((item) => {
           return {
             id: item.image_id,
@@ -89,7 +86,7 @@ const Dashboard = () => {
         });
         setImages(formatted);
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     };
     fetchImageData();
@@ -128,7 +125,6 @@ const Dashboard = () => {
 
     setImage(file);
     setPreview(URL.createObjectURL(file));
-    console.log(file);
     const formData = new FormData();
     formData.append("photo", file);
 
@@ -145,7 +141,7 @@ const Dashboard = () => {
           body: formData,
         },
       );
-      console.log(await response.json());
+      await response.json();
     } catch (err) {
       console.error(err);
     }
@@ -259,10 +255,6 @@ const Dashboard = () => {
   const filteredImages = Images.filter(
     (img) => img.location_id === selectedLocation,
   );
-  console.log(selectedLocation);
-  console.log(Images);
-  console.log(filteredImages);
-  console.log(filteredImages.length);
 
   const currentCity = Cities?.find((c) => c.id === selectedCity);
   const currentLocation = Locations.find((l) => l.id === selectedLocation);
@@ -687,7 +679,7 @@ const Dashboard = () => {
           />
         )}
 
-        {activeSection === "chatbot" && <ChatbotView />}
+        {activeSection === "chatbot" && <ChatbotView userId={User?.id} />}
 
         {activeSection === "travelHistory" && (
           <TravelHistoryView

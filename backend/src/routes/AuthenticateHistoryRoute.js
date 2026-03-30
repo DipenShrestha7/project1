@@ -2,7 +2,7 @@ import HistoryModel from "../models/HistoryModel.js";
 import UsersModel from "../models/UsersModel.js";
 
 function authenticateHistoryRoute(fastify) {
-  fastify.get("/api/history/:userId", async (request, reply) => {
+  fastify.get("/history/:userId", async (request, reply) => {
     const { userId } = request.params;
 
     const history = await HistoryModel.findAll({
@@ -13,7 +13,7 @@ function authenticateHistoryRoute(fastify) {
     return reply.send(history);
   });
 
-  fastify.get("/api/location/:location_id/reviews", async (request, reply) => {
+  fastify.get("/location/:location_id/reviews", async (request, reply) => {
     const { location_id } = request.params;
 
     try {
@@ -47,7 +47,7 @@ function authenticateHistoryRoute(fastify) {
     }
   });
 
-  fastify.post("/api/history/visited", async (request, reply) => {
+  fastify.post("/history/visited", async (request, reply) => {
     const { user_id, location_id } = request.body;
 
     const existing = await HistoryModel.findOne({
@@ -81,7 +81,7 @@ function authenticateHistoryRoute(fastify) {
     return reply.send({ visited: true, travel_id: created.travel_id });
   });
 
-  fastify.patch("/api/history/review", async (request, reply) => {
+  fastify.patch("/history/review", async (request, reply) => {
     const { user_id, location_id, review_text, rating } = request.body;
 
     const history = await HistoryModel.findOne({
@@ -114,7 +114,7 @@ function authenticateHistoryRoute(fastify) {
     return reply.send(history);
   });
 
-  fastify.delete("/api/history/review", async (request, reply) => {
+  fastify.delete("/history/review", async (request, reply) => {
     const { user_id, location_id } = request.body;
 
     const history = await HistoryModel.findOne({
@@ -137,7 +137,7 @@ function authenticateHistoryRoute(fastify) {
     return reply.send(history);
   });
 
-  fastify.delete("/api/history", async (request, reply) => {
+  fastify.delete("/history", async (request, reply) => {
     const { user_id, location_id } = request.body;
 
     const history = await HistoryModel.findOne({
