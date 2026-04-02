@@ -99,6 +99,10 @@ const App = () => {
       });
     }
   };
+  const guestLogin = () => {
+    localStorage.removeItem("token");
+    navigate("/ghumphir/dashboard");
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -208,6 +212,12 @@ const App = () => {
               className="w-full py-3 rounded-xl bg-sky-600 text-white font-medium hover:bg-sky-700 transition"
             >
               {isLogin ? "Log in" : "Create account"}
+            </button>
+            <button
+              onClick={guestLogin}
+              className="w-full py-3 rounded-xl bg-sky-600 text-white font-medium hover:bg-sky-700 transition"
+            >
+              Login as Guest
             </button>
           </form>
           {notice && (

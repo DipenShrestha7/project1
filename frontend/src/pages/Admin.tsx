@@ -123,13 +123,24 @@ export default function AdminPanel() {
   };
 
   const handleUpdateCity = async () => {
+    if (!updateCityId) {
+      showNotification("info", "Please provide City ID");
+      return;
+    }
+
+    const payload: Record<string, string> = {};
+    if (updateCityName.trim()) payload.city_name = updateCityName;
+    if (updateCityDescription.trim()) payload.description = updateCityDescription;
+
+    if (Object.keys(payload).length === 0) {
+      showNotification("info", "Please provide at least one new value");
+      return;
+    }
+
     await fetch(`http://localhost:9000/api/admin/city/${updateCityId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        city_name: updateCityName,
-        description: updateCityDescription,
-      }),
+      body: JSON.stringify(payload),
     });
     showNotification("success", "City Updated");
   };
@@ -183,17 +194,30 @@ export default function AdminPanel() {
   };
 
   const handleUpdateLocation = async () => {
+    if (!updateLocationId) {
+      showNotification("info", "Please provide Location ID");
+      return;
+    }
+
+    const payload: Record<string, string> = {};
+    if (updateLocationName.trim()) payload.location_name = updateLocationName;
+    if (updateLocationDescription.trim()) {
+      payload.description = updateLocationDescription;
+    }
+    if (updateLatitude.trim()) payload.latitude = updateLatitude;
+    if (updateLongitude.trim()) payload.longitude = updateLongitude;
+
+    if (Object.keys(payload).length === 0) {
+      showNotification("info", "Please provide at least one new value");
+      return;
+    }
+
     await fetch(
       `http://localhost:9000/api/admin/location/${updateLocationId}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          location_name: updateLocationName,
-          description: updateLocationDescription,
-          latitude: updateLatitude,
-          longitude: updateLongitude,
-        }),
+        body: JSON.stringify(payload),
       },
     );
     showNotification("success", "Location Updated");
@@ -272,6 +296,11 @@ export default function AdminPanel() {
   };
 
   const handleUpdateImage = async () => {
+    if (!updateImageId) {
+      showNotification("info", "Please provide Image ID");
+      return;
+    }
+
     if (!updateImageFile && !updateImageDescription) {
       showNotification(
         "info",

@@ -8,6 +8,7 @@ import {
   Sun,
   Moon,
   MessageCircle,
+  Menu,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { User, Cities, ActiveSection } from "./types";
@@ -32,6 +33,7 @@ interface DashboardSidebarProps {
   onLogOut?: () => void;
   darkMode: boolean;
   toggleTheme: () => void;
+  onDesktopToggle?: () => void;
 }
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
@@ -53,6 +55,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   onLogOut,
   darkMode,
   toggleTheme,
+  onDesktopToggle,
 }) => {
   const navigate = useNavigate();
 
@@ -79,65 +82,79 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         </button>
       </div>
 
-      {User ? (
-        <div className="flex items-center gap-4 bg-sky-600 text-white rounded-2xl p-4">
-          <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              id="fileInput"
-              onChange={handleFile}
-            />
-            {preview ? (
-              <img
-                src={preview}
-                alt="preview"
-                className="w-12 h-12 rounded-full object-cover cursor-pointer"
-                onClick={() => document.getElementById("fileInput")?.click()}
+      <div className="flex items-center gap-3">
+        {User ? (
+          <div className="flex-1 min-w-0 flex items-center gap-3 bg-sky-600 text-white rounded-2xl px-3 py-2.5">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold shrink-0">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="fileInput"
+                onChange={handleFile}
               />
-            ) : User?.profile_image ? (
-              <img
-                src={`http://localhost:9000${User.profile_image}`}
-                alt="profile"
-                className="w-12 h-12 rounded-full object-cover cursor-pointer"
-                onClick={() => document.getElementById("fileInput")?.click()}
-              />
-            ) : (
-              <img
-                src={pfp}
-                alt="default"
-                className="w-12 h-12 rounded-full object-cover cursor-pointer"
-                onClick={() => document.getElementById("fileInput")?.click()}
-              />
-            )}
+              {preview ? (
+                <img
+                  src={preview}
+                  alt="preview"
+                  className="w-10 h-10 rounded-full object-cover cursor-pointer"
+                  onClick={() => document.getElementById("fileInput")?.click()}
+                />
+              ) : User?.profile_image ? (
+                <img
+                  src={`http://localhost:9000${User.profile_image}`}
+                  alt="profile"
+                  className="w-10 h-10 rounded-full object-cover cursor-pointer"
+                  onClick={() => document.getElementById("fileInput")?.click()}
+                />
+              ) : (
+                <img
+                  src={pfp}
+                  alt="default"
+                  className="w-10 h-10 rounded-full object-cover cursor-pointer"
+                  onClick={() => document.getElementById("fileInput")?.click()}
+                />
+              )}
+            </div>
+            <div className="leading-tight overflow-hidden min-w-0">
+              <h2 className="text-sm font-semibold truncate">{User?.name}</h2>
+              <p className="text-xs opacity-90 break-all leading-4">
+                {User?.email}
+              </p>
+            </div>
           </div>
-          <div className="leading-tight overflow-hidden">
-            <h2 className="text-base font-semibold truncate">{User?.name}</h2>
-            <p className="text-sm opacity-90 truncate">{User?.email}</p>
+        ) : (
+          <div
+            onClick={() => navigate("/ghumphir/login")}
+            className="flex-1 min-w-0 flex items-center gap-3 bg-sky-600 text-white rounded-2xl px-3 py-2.5 cursor-pointer hover:bg-sky-700 transition"
+          >
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold shrink-0">
+              <span className="text-lg pb-0.5">?</span>
+            </div>
+            <div className="leading-tight overflow-hidden min-w-0">
+              <h2 className="text-sm font-semibold truncate">Welcome, Guest</h2>
+              <p className="text-xs opacity-90 break-all leading-4 hover:underline">
+                Click here to sign in
+              </p>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div
-          onClick={() => navigate("/login")}
-          className="flex items-center gap-4 bg-sky-600 text-white rounded-2xl p-4 cursor-pointer hover:bg-sky-700 transition"
+        )}
+
+        <button
+          type="button"
+          onClick={onDesktopToggle}
+          className="hidden md:flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition shrink-0"
+          aria-label="Collapse sidebar"
+          title="Collapse sidebar"
         >
-          <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold">
-            <span className="text-xl pb-1">?</span>
-          </div>
-          <div className="leading-tight overflow-hidden">
-            <h2 className="text-base font-semibold truncate">Welcome, Guest</h2>
-            <p className="text-sm opacity-90 truncate hover:underline">
-              Click here to sign in
-            </p>
-          </div>
-        </div>
-      )}
+          <Menu size={20} />
+        </button>
+      </div>
 
       <div className="flex-1 min-h-0 flex flex-col">
         <div className="flex flex-col gap-2 mb-5">
           <button
-            onClick={() => setActiveSection("chatbot")}
+            onClick={() => handleRestrictedNavigation("chatbot")}
             className={`flex items-center gap-2 px-4 py-3 rounded-xl transition ${
               activeSection === "chatbot"
                 ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"

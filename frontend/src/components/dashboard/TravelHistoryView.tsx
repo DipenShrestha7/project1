@@ -78,7 +78,7 @@ const TravelHistoryView: React.FC<TravelHistoryViewProps> = ({
                 <h3 className="text-lg font-semibold text-sky-800 dark:text-sky-300">
                   {loc.name}
                 </h3>
-                <p className="text-slate-500 dark:text-slate-400 mt-1 mb-2">
+                <p className="text-slate-500 dark:text-slate-400 mt-1 mb-2 text-justify">
                   {loc.description}
                 </p>
                 {historyItem.travel_date && (

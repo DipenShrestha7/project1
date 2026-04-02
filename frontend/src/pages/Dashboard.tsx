@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { LogIn, Menu, LogOut } from "lucide-react";
+import {
+  LogIn,
+  Menu,
+  LogOut,
+  MessageCircle,
+  Heart,
+  History,
+  MapPin,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type {
   User,
@@ -152,7 +160,15 @@ const Dashboard = () => {
   const [locationReviews, setLocationReviews] = useState<Review[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    return window.innerWidth >= 768;
+  });
+
+  const closeSidebarOnMobile = () => {
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedLocation) {
@@ -597,7 +613,7 @@ const Dashboard = () => {
           Dashboard
         </h1>
         <button
-          onClick={() => setIsSidebarOpen(true)}
+          onClick={() => setIsSidebarOpen((prev) => !prev)}
           className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
         >
           <Menu size={24} />
@@ -614,37 +630,114 @@ const Dashboard = () => {
 
       {/* Sidebar Wrapper */}
       <div
-        className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 z-50 transition-transform duration-300 ease-in-out h-full md:h-screen w-72 shrink-0`}
+        className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0 z-50 transition-all duration-300 ease-in-out h-full md:h-screen ${isSidebarOpen ? "w-72" : "w-0 md:w-20"} shrink-0 overflow-hidden`}
       >
-        <DashboardSidebar
-          onAuthRequired={() => setShowAuthModal(true)}
-          User={User}
-          preview={preview}
-          handleFile={handleFile}
-          activeSection={activeSection}
-          setActiveSection={(sec) => {
-            setActiveSection(sec);
-            setIsSidebarOpen(false); // Close sidebar on mobile when navigating
-          }}
-          searchCity={searchCity}
-          setSearchCity={setSearchCity}
-          filteredCities={filteredCities}
-          selectedCity={selectedCity}
-          setSelectedCity={(id) => {
-            setSelectedCity(id);
-            setIsSidebarOpen(false);
-          }}
-          setSelectedLocation={setSelectedLocation}
-          wishlistCityIds={wishlistCityIds}
-          toggleCityWishlist={toggleCityWishlist}
-          onCloseMobile={() => setIsSidebarOpen(false)}
-          onLogOut={handleLogoutClick}
-          darkMode={darkMode}
-          toggleTheme={() => {
-            setHasUserThemePreference(true);
-            setDarkMode((prev) => !prev);
-          }}
-        />
+        {isSidebarOpen ? (
+          <DashboardSidebar
+            onAuthRequired={() => setShowAuthModal(true)}
+            User={User}
+            preview={preview}
+            handleFile={handleFile}
+            activeSection={activeSection}
+            setActiveSection={(sec) => {
+              setActiveSection(sec);
+              closeSidebarOnMobile();
+            }}
+            searchCity={searchCity}
+            setSearchCity={setSearchCity}
+            filteredCities={filteredCities}
+            selectedCity={selectedCity}
+            setSelectedCity={(id) => {
+              setSelectedCity(id);
+              closeSidebarOnMobile();
+            }}
+            setSelectedLocation={setSelectedLocation}
+            wishlistCityIds={wishlistCityIds}
+            toggleCityWishlist={toggleCityWishlist}
+            onCloseMobile={() => setIsSidebarOpen(false)}
+            onLogOut={handleLogoutClick}
+            darkMode={darkMode}
+            toggleTheme={() => {
+              setHasUserThemePreference(true);
+              setDarkMode((prev) => !prev);
+            }}
+            onDesktopToggle={() => setIsSidebarOpen(false)}
+          />
+        ) : (
+          <div className="hidden md:flex h-full w-16 bg-white dark:bg-gray-800 shadow-xl rounded-r-2xl p-2.5 flex-col items-center gap-2.5 transition-colors">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-900/60 transition flex items-center justify-center"
+              aria-label="Expand sidebar"
+              title="Expand sidebar"
+            >
+              <Menu size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSection("chatbot");
+              }}
+              className={`w-10 h-10 rounded-xl transition flex items-center justify-center ${
+                activeSection === "chatbot"
+                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
+                  : "text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+              aria-label="Open chatbot"
+              title="Chatbot"
+            >
+              <MessageCircle size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSection("wishlist");
+              }}
+              className={`w-10 h-10 rounded-xl transition flex items-center justify-center ${
+                activeSection === "wishlist"
+                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
+                  : "text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+              aria-label="Open wishlist"
+              title="Wishlist"
+            >
+              <Heart size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSection("travelHistory");
+              }}
+              className={`w-10 h-10 rounded-xl transition flex items-center justify-center ${
+                activeSection === "travelHistory"
+                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
+                  : "text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+              aria-label="Open travel history"
+              title="Travel history"
+            >
+              <History size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSection("cities");
+                setSelectedLocation(null);
+                setIsSidebarOpen(true);
+              }}
+              className={`w-10 h-10 rounded-xl transition flex items-center justify-center ${
+                activeSection === "cities"
+                  ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
+                  : "text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+              aria-label="Open cities"
+              title="Cities"
+            >
+              <MapPin size={18} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}

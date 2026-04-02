@@ -24,49 +24,123 @@ type ChatbotViewProps = {
   userId?: number;
 };
 
+const defaultMessages: ChatMessage[] = [
+  {
+    role: "ai",
+    text: "Hi! I can help you with places to visit in Nepal. Ask me about a specific place.",
+  },
+];
+
+const normalizeReplyText = (reply: unknown): string => {
+  if (typeof reply === "string") return reply;
+
+  if (reply && typeof reply === "object") {
+    const payload = reply as Record<string, unknown>;
+    const candidate =
+      payload.reply ?? payload.response ?? payload.message ?? payload.text;
+
+    if (typeof candidate === "string") return candidate;
+  }
+
+  if (reply == null) return "Message saved.";
+
+  try {
+    return JSON.stringify(reply);
+  } catch {
+    return String(reply);
+  }
+};
+
 const ChatbotView = ({ userId }: ChatbotViewProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "ai",
-      text: "Hi! I can help you with places to visit in Nepal. Ask me about a specific place.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
+  const [pendingDeleteChat, setPendingDeleteChat] = useState<PastChat | null>(
+    null,
+  );
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [pastChats, setPastChats] = useState<PastChat[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // Fetch chat sessions from backend
-  useEffect(() => {
-    const fetchSessions = async () => {
-      if (!userId) return;
-      try {
-        const res = await fetch("http://localhost:9000/api/sessions", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const formattedChats: PastChat[] = data.map(
-            (session: { session_id: number; title: string }) => ({
-              id: session.session_id.toString(),
-              title: session.title,
-            }),
-          );
-          setPastChats(formattedChats);
-        }
-      } catch (err) {
-        console.error(err);
+  // Function to fetch chat sessions from backend
+  const fetchSessions = async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch("http://localhost:9000/api/sessions", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const formattedChats: PastChat[] = data.map(
+          (session: { session_id: number; title: string }) => ({
+            id: session.session_id.toString(),
+            title: session.title,
+          }),
+        );
+        setPastChats(formattedChats);
       }
-    };
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Fetch chat sessions from backend on component mount
+  useEffect(() => {
     fetchSessions();
   }, [userId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    const fetchSessionMessages = async () => {
+      if (!userId || !selectedChatId) {
+        setMessages(defaultMessages);
+        return;
+      }
+
+      setLoadingHistory(true);
+      try {
+        const res = await fetch(
+          `http://localhost:9000/api/sessions/${selectedChatId}/messages`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          },
+        );
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch selected chat messages.");
+        }
+
+        const data = await res.json();
+        const formatted: ChatMessage[] = Array.isArray(data)
+          ? data.map((item: { sender: string; message: string }) => ({
+              role: item.sender === "user" ? "user" : "ai",
+              text: item.message,
+            }))
+          : [];
+
+        setMessages(formatted.length ? formatted : defaultMessages);
+      } catch (error) {
+        const fallback =
+          error instanceof Error && error.message
+            ? error.message
+            : "Something went wrong while loading the chat.";
+        setMessages([{ role: "ai", text: fallback }]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    void fetchSessionMessages();
+  }, [selectedChatId, userId]);
 
   const sendMessage = async () => {
     const trimmed = input.trim();
@@ -104,29 +178,34 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
       });
       const data = await res.json();
 
+      if (!res.ok || data?.success === false) {
+        const errorMessage =
+          typeof data?.error === "string"
+            ? data.error
+            : "Failed to get a response from the assistant.";
+        throw new Error(errorMessage);
+      }
+
       // Persist session ID for subsequent messages
       if (data.session_id && !selectedChatId) {
         const newSessionId = data.session_id.toString();
         setSelectedChatId(newSessionId);
 
-        // Add new session to pastChats sidebar
-        const newChat: PastChat = {
-          id: newSessionId,
-          title: trimmed.slice(0, 40),
-        };
-        setPastChats((prev) => [newChat, ...prev]);
+        // Refetch sessions to ensure sidebar shows the new chat
+        await fetchSessions();
       }
 
       // Add AI response to chat
       setMessages((prev) => [
         ...prev,
-        { role: "ai", text: data.reply || "Message saved." },
+        { role: "ai", text: normalizeReplyText(data.reply) },
       ]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "ai", text: "Something went wrong. Please try again." },
-      ]);
+    } catch (error) {
+      const fallback =
+        error instanceof Error && error.message
+          ? error.message
+          : "Something went wrong. Please try again.";
+      setMessages((prev) => [...prev, { role: "ai", text: fallback }]);
     } finally {
       setLoading(false);
     }
@@ -140,17 +219,13 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
   };
 
   const handleNewChat = () => {
-    setMessages([
-      {
-        role: "ai",
-        text: "Hi! I can help you with places to visit in Nepal. Ask me about a specific place.",
-      },
-    ]);
+    setMessages(defaultMessages);
     setInput("");
     setSelectedChatId(null);
   };
 
   const handleDeleteChat = async (chatId: string) => {
+    setDeletingChatId(chatId);
     try {
       await fetch(`http://localhost:9000/api/sessions/${chatId}`, {
         method: "DELETE",
@@ -161,9 +236,13 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
       setPastChats((prev) => prev.filter((chat) => chat.id !== chatId));
       if (selectedChatId === chatId) {
         setSelectedChatId(null);
+        setMessages(defaultMessages);
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setDeletingChatId(null);
+      setPendingDeleteChat(null);
     }
   };
 
@@ -217,7 +296,7 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteChat(chat.id);
+                    setPendingDeleteChat(chat);
                   }}
                   className="mt-2 opacity-0 group-hover:opacity-100 transition flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700"
                 >
@@ -279,16 +358,16 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
                       ),
                     }}
                   >
-                    {msg.text}
+                    {typeof msg.text === "string" ? msg.text : String(msg.text)}
                   </ReactMarkdown>
                 </div>
               </div>
             ))}
 
-            {loading && (
+            {(loading || loadingHistory) && (
               <div className="flex justify-start">
                 <div className="max-w-[85%] rounded-2xl rounded-bl-md px-4 py-3 text-sm bg-white dark:bg-gray-800 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-gray-700">
-                  Thinking...
+                  {loadingHistory ? "Loading chat..." : "Thinking..."}
                 </div>
               </div>
             )}
@@ -315,6 +394,55 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
           </div>
         </div>
       </div>
+
+      {pendingDeleteChat && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 backdrop-blur-sm px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-chat-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-gray-700">
+              <h3
+                id="delete-chat-title"
+                className="text-lg font-semibold text-slate-900 dark:text-slate-100"
+              >
+                Delete this chat?
+              </h3>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                This will permanently remove
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                  {` "${pendingDeleteChat.title}" `}
+                </span>
+                and all of its messages.
+              </p>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 dark:bg-gray-900/50 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteChat(null)}
+                disabled={deletingChatId === pendingDeleteChat.id}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-100 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDeleteChat(pendingDeleteChat.id)}
+                disabled={deletingChatId === pendingDeleteChat.id}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed transition"
+              >
+                <Trash2 size={15} />
+                {deletingChatId === pendingDeleteChat.id
+                  ? "Deleting..."
+                  : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

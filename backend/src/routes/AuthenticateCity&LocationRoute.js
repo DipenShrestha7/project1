@@ -29,10 +29,24 @@ function authenticateCityLocationRoutes(fastify) {
     const { city_name, description } = request.body;
 
     try {
+      const existingCity = await CitiesModel.findOne({ where: { city_id } });
+      if (!existingCity) {
+        return reply.code(404).send({ error: "City not found" });
+      }
+
+      const resolvedCityName =
+        typeof city_name === "string" && city_name.trim()
+          ? normalize(city_name)
+          : existingCity.city_name;
+      const resolvedDescription =
+        typeof description === "string" && description.trim()
+          ? description
+          : existingCity.description;
+
       const updated_city = await CitiesModel.update(
         {
-          city_name: normalize(city_name),
-          description,
+          city_name: resolvedCityName,
+          description: resolvedDescription,
         },
         { where: { city_id } },
       );
@@ -163,20 +177,43 @@ function authenticateCityLocationRoutes(fastify) {
     const { location_id } = request.params;
     let { location_name, description, latitude, longitude } = request.body;
 
-    if (latitude == "") {
-      latitude = null;
-    }
-    if (longitude == "") {
-      longitude = null;
-    }
-
     try {
+      const existingLocation = await LocationsModel.findOne({
+        where: { location_id },
+      });
+      if (!existingLocation) {
+        return reply.code(404).send({ error: "Location not found" });
+      }
+
+      const resolvedLocationName =
+        typeof location_name === "string" && location_name.trim()
+          ? location_name
+          : existingLocation.location_name;
+      const resolvedDescription =
+        typeof description === "string" && description.trim()
+          ? description
+          : existingLocation.description;
+
+      const hasLatitude = !(latitude == null || latitude === "");
+      const hasLongitude = !(longitude == null || longitude === "");
+      const parsedLatitude = hasLatitude ? Number(latitude) : null;
+      const parsedLongitude = hasLongitude ? Number(longitude) : null;
+
+      const resolvedLatitude =
+        hasLatitude && Number.isFinite(parsedLatitude)
+          ? parsedLatitude
+          : existingLocation.latitude;
+      const resolvedLongitude =
+        hasLongitude && Number.isFinite(parsedLongitude)
+          ? parsedLongitude
+          : existingLocation.longitude;
+
       const updated_location = await LocationsModel.update(
         {
-          location_name: location_name,
-          description,
-          latitude,
-          longitude,
+          location_name: resolvedLocationName,
+          description: resolvedDescription,
+          latitude: resolvedLatitude,
+          longitude: resolvedLongitude,
         },
         { where: { location_id } },
       );
@@ -299,6 +336,11 @@ function authenticateCityLocationRoutes(fastify) {
   fastify.put("/admin/image/:image_id", async (request, reply) => {
     const { image_id } = request.params;
     try {
+      const existingImage = await ImageModel.findOne({ where: { image_id } });
+      if (!existingImage) {
+        return reply.code(404).send({ error: "Image not found" });
+      }
+
       const parts = request.parts();
       let image_description, fileData;
 
@@ -327,8 +369,10 @@ function authenticateCityLocationRoutes(fastify) {
 
         updateData.image_url = `http://localhost:9000/uploads/locations/${filename}`;
       }
-      if (image_description) {
+      if (typeof image_description === "string" && image_description.trim()) {
         updateData.image_description = image_description;
+      } else {
+        updateData.image_description = existingImage.image_description;
       }
       const updated_image = await ImageModel.update(updateData, {
         where: { image_id },

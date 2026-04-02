@@ -9,7 +9,7 @@ function AuthenticateChatRoute(fastify) {
     let { session_id, message } = request.body;
 
     try {
-      // Create a new session if this is the first message
+      // create session if first message
       if (!session_id) {
         const chatSession = await ChatSessionModel.create({
           user_id: userId,
@@ -18,6 +18,30 @@ function AuthenticateChatRoute(fastify) {
         session_id = chatSession.session_id;
       }
 
+      // fetch history for AI context
+      const messages = await ChatMessageModel.findAll({
+        where: { session_id },
+        order: [
+          ["created_at", "ASC"],
+          ["message_id", "ASC"],
+        ],
+      });
+
+      const history = messages.map((m) => {
+        return { role: m.sender, content: m.message };
+      });
+
+      // Debug: Log what we're sending
+      const requestBody = {
+        message,
+        session_id: String(session_id), // ← Convert to string for Python
+        history,
+      };
+      console.log(
+        "📤 Sending to Python:",
+        JSON.stringify(requestBody, null, 2),
+      );
+
       // Save the user message to database
       await ChatMessageModel.create({
         session_id,
@@ -25,19 +49,34 @@ function AuthenticateChatRoute(fastify) {
         message,
       });
 
-      // Return success response with session_id and a placeholder reply
-      return reply.send({
-        success: true,
-        session_id,
-        reply: "Thank you for your message. This is a placeholder response.",
+      // one call to Python — with history for context
+      const aiRes = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
       });
+
+      if (!aiRes.ok) {
+        throw new Error(`Agent service failed with status ${aiRes.status}`);
+      }
+
+      const aiData = await aiRes.json(); // use this, not a second call
+      const aiReply =
+        typeof aiData?.reply === "string"
+          ? aiData.reply
+          : "Sorry, I could not generate a response right now.";
+
+      // save both messages
+      await ChatMessageModel.create({
+        session_id,
+        sender: "ai",
+        message: aiReply,
+      });
+
+      return reply.send({ success: true, session_id, reply: aiReply });
     } catch (err) {
       console.error("Chat Route Error:", err.message);
-      fastify.log.error(err);
-      return reply.code(500).send({
-        success: false,
-        error: err.message || "Failed to save message",
-      });
+      return reply.code(500).send({ success: false, error: err.message });
     }
   });
 
@@ -61,6 +100,46 @@ function AuthenticateChatRoute(fastify) {
       });
     }
   });
+
+  // GET /api/sessions/:id/messages - Get chat messages for a specific session
+  fastify.get(
+    "/sessions/:id/messages",
+    { preHandler: authHook },
+    async (request, reply) => {
+      const userId = request.user.user_id;
+      const sessionId = request.params.id;
+
+      try {
+        const session = await ChatSessionModel.findOne({
+          where: { session_id: sessionId, user_id: userId },
+        });
+
+        if (!session) {
+          return reply.code(404).send({
+            success: false,
+            error: "Session not found",
+          });
+        }
+
+        const messages = await ChatMessageModel.findAll({
+          where: { session_id: sessionId },
+          order: [
+            ["created_at", "ASC"],
+            ["message_id", "ASC"],
+          ],
+        });
+
+        return reply.send(messages);
+      } catch (err) {
+        console.error("Fetch Session Messages Error:", err.message);
+        fastify.log.error(err);
+        return reply.code(500).send({
+          success: false,
+          error: "Failed to fetch chat messages",
+        });
+      }
+    },
+  );
 
   // DELETE /api/sessions/:id - Delete a chat session
   fastify.delete(
