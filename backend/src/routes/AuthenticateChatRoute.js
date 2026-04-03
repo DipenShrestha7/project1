@@ -1,14 +1,53 @@
 import ChatMessageModel from "../models/ChatMessagesModel.js";
 import ChatSessionModel from "../models/ChatSessionsModel.js";
+import UsersModel from "../models/UsersModel.js";
 import authHook from "../hooks/auth.js";
 
 function AuthenticateChatRoute(fastify) {
   // POST /api/chat - Save a message and create session if needed
   fastify.post("/chat", { preHandler: authHook }, async (request, reply) => {
-    const userId = request.user.user_id;
+    const userId = Number(request.user?.user_id);
     let { session_id, message } = request.body;
 
     try {
+      if (!Number.isInteger(userId) || userId <= 0) {
+        return reply.code(401).send({
+          success: false,
+          error: "Invalid auth token payload",
+          code: "INVALID_AUTH_PAYLOAD",
+        });
+      }
+
+      const user = await UsersModel.findOne({ where: { user_id: userId } });
+      if (!user) {
+        return reply.code(401).send({
+          success: false,
+          error: "User from token no longer exists. Please log in again.",
+          code: "TOKEN_USER_NOT_FOUND",
+        });
+      }
+
+      if (typeof message !== "string" || !message.trim()) {
+        return reply.code(400).send({
+          success: false,
+          error: "Message is required",
+        });
+      }
+      message = message.trim();
+
+      if (session_id) {
+        const existingSession = await ChatSessionModel.findOne({
+          where: { session_id, user_id: userId },
+        });
+
+        if (!existingSession) {
+          return reply.code(404).send({
+            success: false,
+            error: "Session not found for this user",
+          });
+        }
+      }
+
       // create session if first message
       if (!session_id) {
         const chatSession = await ChatSessionModel.create({
@@ -75,6 +114,14 @@ function AuthenticateChatRoute(fastify) {
 
       return reply.send({ success: true, session_id, reply: aiReply });
     } catch (err) {
+      if (err?.name === "SequelizeForeignKeyConstraintError") {
+        return reply.code(409).send({
+          success: false,
+          error: "User-session relationship is invalid. Please log in again.",
+          code: "FK_USER_SESSION_MISMATCH",
+        });
+      }
+
       console.error("Chat Route Error:", err.message);
       return reply.code(500).send({ success: false, error: err.message });
     }
@@ -136,6 +183,55 @@ function AuthenticateChatRoute(fastify) {
         return reply.code(500).send({
           success: false,
           error: "Failed to fetch chat messages",
+        });
+      }
+    },
+  );
+
+  // PATCH /api/sessions/:id - Update chat session title
+  fastify.patch(
+    "/sessions/:id",
+    { preHandler: authHook },
+    async (request, reply) => {
+      const userId = request.user.user_id;
+      const sessionId = request.params.id;
+      const { title } = request.body;
+
+      try {
+        if (!title || typeof title !== "string" || !title.trim()) {
+          return reply.code(400).send({
+            success: false,
+            error: "Title is required",
+          });
+        }
+
+        const session = await ChatSessionModel.findOne({
+          where: { session_id: sessionId, user_id: userId },
+        });
+
+        if (!session) {
+          return reply.code(404).send({
+            success: false,
+            error: "Session not found",
+          });
+        }
+
+        await ChatSessionModel.update(
+          { title: title.trim() },
+          { where: { session_id: sessionId, user_id: userId } },
+        );
+
+        return reply.send({
+          success: true,
+          message: "Session title updated",
+          title: title.trim(),
+        });
+      } catch (err) {
+        console.error("Update Session Error:", err.message);
+        fastify.log.error(err);
+        return reply.code(500).send({
+          success: false,
+          error: "Failed to update session",
         });
       }
     },

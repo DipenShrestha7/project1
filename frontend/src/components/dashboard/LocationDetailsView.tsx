@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  ArrowLeft,
   Camera,
   Check,
   Heart,
@@ -65,9 +66,10 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSelectedLocation(null)}
+                aria-label="Back"
                 className="inline-flex items-center px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition"
               >
-                ← Back
+                <ArrowLeft size={18} />
               </button>
               <h2 className="text-3xl font-semibold leading-tight text-sky-900 dark:text-sky-400">
                 {currentLocation?.name}

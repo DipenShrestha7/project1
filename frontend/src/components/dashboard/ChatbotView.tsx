@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bot,
   SendHorizonal,
   User as UserIcon,
   Plus,
   Trash2,
+  Edit,
+  MoreVertical,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -62,10 +64,13 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
   );
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [pastChats, setPastChats] = useState<PastChat[]>([]);
+  const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState("");
+  const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   // Function to fetch chat sessions from backend
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     if (!userId) return;
     try {
       const res = await fetch("http://localhost:9000/api/sessions", {
@@ -86,12 +91,12 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [userId]);
 
   // Fetch chat sessions from backend on component mount
   useEffect(() => {
-    fetchSessions();
-  }, [userId]);
+    void fetchSessions();
+  }, [fetchSessions]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -142,6 +147,22 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
     void fetchSessionMessages();
   }, [selectedChatId, userId]);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-menu-container]")) {
+        setOpenMenuChatId(null);
+      }
+    };
+
+    if (openMenuChatId) {
+      document.addEventListener("click", handleClickOutside);
+      return () => {
+        document.removeEventListener("click", handleClickOutside);
+      };
+    }
+  }, [openMenuChatId]);
+
   const sendMessage = async () => {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
@@ -171,12 +192,16 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
-          user_id: userId,
           session_id: sessionId || null,
           message: trimmed,
         }),
       });
       const data = await res.json();
+
+      if (res.status === 401 && data?.code === "TOKEN_USER_NOT_FOUND") {
+        localStorage.removeItem("token");
+        throw new Error("Your session is out of sync. Please log in again.");
+      }
 
       if (!res.ok || data?.success === false) {
         const errorMessage =
@@ -251,6 +276,44 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
     // Will show the chat messages when backend is integrated
   };
 
+  const handleRenameChat = async (chatId: string) => {
+    if (!renameText.trim()) {
+      setRenamingChatId(null);
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:9000/api/sessions/${chatId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ title: renameText.trim() }),
+      });
+
+      if (res.ok) {
+        setPastChats((prev) =>
+          prev.map((chat) =>
+            chat.id === chatId ? { ...chat, title: renameText.trim() } : chat,
+          ),
+        );
+        setRenamingChatId(null);
+        setRenameText("");
+      } else {
+        console.error("Failed to rename chat");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleStartRename = (e: React.MouseEvent, chat: PastChat) => {
+    e.stopPropagation();
+    setRenamingChatId(chat.id);
+    setRenameText(chat.title);
+  };
+
   return (
     <div className="w-full h-full flex flex-col gap-4">
       <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400">
@@ -278,31 +341,80 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
               <div
                 key={chat.id}
                 onClick={() => handleSelectChat(chat.id)}
-                className={`p-3 rounded-lg cursor-pointer transition group ${
+                className={`p-3 rounded-lg cursor-pointer transition group border ${
                   selectedChatId === chat.id
-                    ? "bg-sky-100 dark:bg-sky-700/40"
-                    : "hover:bg-slate-100 dark:hover:bg-gray-700/60"
+                    ? "bg-sky-100 dark:bg-sky-700/40 border-sky-300 dark:border-sky-600"
+                    : "border-slate-200 dark:border-gray-600 hover:bg-slate-100 dark:hover:bg-gray-700/60"
                 }`}
               >
-                <p
-                  className={`text-sm font-semibold line-clamp-1 ${
-                    selectedChatId === chat.id
-                      ? "text-sky-700 dark:text-sky-300"
-                      : "text-slate-800 dark:text-slate-200"
-                  }`}
-                >
-                  {chat.title}
-                </p>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPendingDeleteChat(chat);
-                  }}
-                  className="mt-2 opacity-0 group-hover:opacity-100 transition flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700"
-                >
-                  <Trash2 size={14} />
-                  Delete
-                </button>
+                <div className="flex items-center justify-between gap-2">
+                  {renamingChatId === chat.id ? (
+                    <input
+                      type="text"
+                      value={renameText}
+                      onChange={(e) => setRenameText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          void handleRenameChat(chat.id);
+                        } else if (e.key === "Escape") {
+                          setRenamingChatId(null);
+                          setRenameText("");
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 px-2 py-1 text-sm border border-sky-400 rounded bg-blue-50 dark:bg-gray-700 dark:text-white dark:border-sky-500 focus:outline-none"
+                      autoFocus
+                    />
+                  ) : (
+                    <p
+                      className={`text-[13px] font-semibold line-clamp-1 flex-1 ${
+                        selectedChatId === chat.id
+                          ? "text-sky-700 dark:text-sky-300"
+                          : "text-slate-800 dark:text-slate-200"
+                      }`}
+                    >
+                      {chat.title}
+                    </p>
+                  )}
+                  {!renamingChatId && (
+                    <div className="relative" data-menu-container>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuChatId(
+                            openMenuChatId === chat.id ? null : chat.id,
+                          );
+                        }}
+                        className="p-1 rounded opacity-0 group-hover:opacity-100 transition text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-gray-600"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+
+                      {openMenuChatId === chat.id && (
+                        <div className="absolute right-0 top-7 z-50 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg shadow-md py-1 min-w-30">
+                          <button
+                            onClick={(e) => handleStartRename(e, chat)}
+                            className="w-full px-3 py-2 text-left text-xs text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-gray-600 flex items-center gap-2"
+                          >
+                            <Edit size={14} />
+                            Rename
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPendingDeleteChat(chat);
+                              setOpenMenuChatId(null);
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-600 flex items-center gap-2"
+                          >
+                            <Trash2 size={14} />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
