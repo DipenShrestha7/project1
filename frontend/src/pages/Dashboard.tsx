@@ -13,15 +13,22 @@ import type {
   HistoryItem,
   ActiveSection,
   Review,
+  AccountStats,
 } from "../components/dashboard/types";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import CitiesView from "../components/dashboard/CitiesView";
-import ChatbotView from "../components/dashboard/ChatbotView";
+import ChatbotView from "../components/dashboard/ChatbotView.tsx";
 import WishlistView from "../components/dashboard/WishlistView";
 import TravelHistoryView from "../components/dashboard/TravelHistoryView";
 import LocationDetailsView from "../components/dashboard/LocationDetailsView";
+import AccountOverlay from "../components/dashboard/AccountOverlay";
 
-const Dashboard = () => {
+type DashboardProps = {
+  darkMode: boolean;
+  onToggleTheme: () => void;
+};
+
+const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
   const [User, setUser] = useState<User>();
   const [Cities, setCities] = useState<Cities[]>([]);
   const [Locations, setLocations] = useState<Locations[]>([]);
@@ -29,6 +36,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [preview, setPreview] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<ActiveSection>("cities");
+
+  const getProfileImageSrc = (profileImage?: string | null) => {
+    if (!profileImage) return null;
+    if (/^https?:\/\//i.test(profileImage)) {
+      return profileImage;
+    }
+    return `http://localhost:9000${profileImage}`;
+  };
 
   useEffect(() => {
     const fetchCityData = async () => {
@@ -109,7 +124,7 @@ const Dashboard = () => {
         }
         const data = await response.json();
         setUser(data);
-        setPreview(`http://localhost:9000${data.profile_image}`);
+        setPreview(getProfileImageSrc(data.profile_image));
       } catch (err) {
         console.error(err);
       }
@@ -117,13 +132,9 @@ const Dashboard = () => {
     fetchDashboard();
   }, [navigate]);
 
-  const [, setImage] = useState<File | null>(null);
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadProfileImage = async (file: File) => {
     if (!file) return;
 
-    setImage(file);
     setPreview(URL.createObjectURL(file));
     const formData = new FormData();
     formData.append("photo", file);
@@ -141,9 +152,15 @@ const Dashboard = () => {
           body: formData,
         },
       );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to upload image");
+      }
+
       await response.json();
     } catch (err) {
       console.error(err);
+      throw err;
     }
   };
 
@@ -152,6 +169,7 @@ const Dashboard = () => {
   const [locationReviews, setLocationReviews] = useState<Review[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isAccountOverlayOpen, setIsAccountOverlayOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     return window.innerWidth >= 768;
   });
@@ -230,9 +248,16 @@ const Dashboard = () => {
   const [travelHistoryLocationIds, setTravelHistoryLocationIds] = useState<
     Set<number>
   >(new Set());
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [travelHistoryItems, setTravelHistoryItems] = useState<HistoryItem[]>(
     [],
   );
+  const [accountStats, setAccountStats] = useState<AccountStats>({
+    wishlistCount: 0,
+    visitedCount: 0,
+    reviewCount: 0,
+    chatSessionsCount: 0,
+  });
   const [expandedReviewLocationIds, setExpandedReviewLocationIds] = useState<
     Set<number>
   >(new Set());
@@ -251,47 +276,10 @@ const Dashboard = () => {
   const [flippedImageIds, setFlippedImageIds] = useState<Set<number>>(
     new Set(),
   );
-  const [hasUserThemePreference, setHasUserThemePreference] = useState(() => {
-    return localStorage.getItem("darkMode") !== null;
-  });
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    if (saved === null) {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
-    }
-    if (saved === "true") return true;
-    return false;
-  });
   const [searchCity, setSearchCity] = useState("");
   const filteredCities = Cities?.filter((city) => {
     return city.name?.toLowerCase().includes(searchCity.toLowerCase());
   });
-
-  useEffect(() => {
-    const html = document.documentElement;
-    if (darkMode) html.classList.add("dark");
-    else html.classList.remove("dark");
-  }, [darkMode]);
-
-  useEffect(() => {
-    if (hasUserThemePreference) {
-      localStorage.setItem("darkMode", darkMode.toString());
-    }
-  }, [darkMode, hasUserThemePreference]);
-
-  useEffect(() => {
-    if (hasUserThemePreference) return;
-
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleThemeChange = (event: MediaQueryListEvent) => {
-      setDarkMode(event.matches);
-    };
-
-    mediaQuery.addEventListener("change", handleThemeChange);
-    return () => {
-      mediaQuery.removeEventListener("change", handleThemeChange);
-    };
-  }, [hasUserThemePreference]);
 
   const filteredLocations = Locations.filter((l) => l.city_id === selectedCity);
   const wishlistCities = Cities.filter((city) => wishlistCityIds.has(city.id));
@@ -326,6 +314,14 @@ const Dashboard = () => {
 
   const handleLogoutClick = () => {
     setShowLogoutModal(true);
+  };
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
   };
 
   const toggleLocationCollection = (
@@ -390,6 +386,7 @@ const Dashboard = () => {
       );
       if (!response.ok) return;
       const data: WishlistItem[] = await response.json();
+      setWishlistItems(data);
       const cityIds = new Set<number>();
       const locationIds = new Set<number>();
 
@@ -409,6 +406,36 @@ const Dashboard = () => {
     if (User?.id) {
       loadWishlist(User.id);
     }
+  }, [User?.id]);
+
+  useEffect(() => {
+    const loadAccountStats = async () => {
+      if (!User?.id) {
+        setAccountStats({
+          wishlistCount: 0,
+          visitedCount: 0,
+          reviewCount: 0,
+          chatSessionsCount: 0,
+        });
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "http://localhost:9000/api/dashboard/stats",
+          {
+            headers: getAuthHeaders(),
+          },
+        );
+        if (!response.ok) return;
+        const data: AccountStats = await response.json();
+        setAccountStats(data);
+      } catch (error) {
+        console.error("Failed to load account stats:", error);
+      }
+    };
+
+    void loadAccountStats();
   }, [User?.id]);
 
   const loadTravelHistory = async (userId: number) => {
@@ -635,6 +662,64 @@ const Dashboard = () => {
     }
   };
 
+  const handleSaveProfile = async (name: string, email: string) => {
+    const response = await fetch(
+      "http://localhost:9000/api/dashboard/profile",
+      {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name, email }),
+      },
+    );
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update profile");
+    }
+
+    setUser((prev) => ({
+      ...(prev ?? {}),
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      profile_image: data.user.profile_image,
+    }));
+  };
+
+  const handleDeleteAccount = async () => {
+    const response = await fetch(
+      "http://localhost:9000/api/dashboard/account",
+      {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      },
+    );
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to delete account");
+    }
+
+    localStorage.removeItem("token");
+    navigate("/ghumphir");
+  };
+
+  const handleSubmitReport = async (
+    type: "bug" | "feedback" | "feature_requests",
+    message: string,
+  ) => {
+    const response = await fetch("http://localhost:9000/api/reports", {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ type, message }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to submit report");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-gray-900 text-slate-900 dark:text-slate-200 transition-colors overflow-hidden">
       {/* Mobile Top Header */}
@@ -666,17 +751,18 @@ const Dashboard = () => {
 
       {/* Sidebar Wrapper */}
       <div
-        className={`fixed inset-y-0 left-0 md:relative md:inset-y-auto md:left-auto transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} ${isSidebarClosing ? "md:-translate-x-2" : "md:translate-x-0"} z-50 md:z-auto transition-all duration-300 ease-in-out h-full md:h-screen ${isSidebarOpen ? "w-60" : "w-16 md:w-16"} shrink-0 overflow-hidden`}
+        className={`fixed inset-y-0 left-0 md:relative md:inset-y-auto md:left-auto transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} ${isSidebarClosing ? "md:-translate-x-2" : "md:translate-x-0"} z-50 md:z-auto transition-all duration-300 ease-in-out h-full md:h-screen ${isSidebarOpen ? "w-60" : "w-16 md:w-16"} shrink-0 overflow-hidden md:border-r md:border-sky-900/40 md:shadow-[10px_0_26px_rgba(2,8,23,0.45)]`}
       >
         <DashboardSidebar
           onAuthRequired={() => setShowAuthModal(true)}
           User={User}
           preview={preview}
-          handleFile={handleFile}
           activeSection={activeSection}
           setActiveSection={(sec) => {
             setActiveSection(sec);
-            closeSidebarOnMobile();
+            if (sec !== "cities") {
+              closeSidebarOnMobile();
+            }
           }}
           searchCity={searchCity}
           setSearchCity={setSearchCity}
@@ -684,7 +770,6 @@ const Dashboard = () => {
           selectedCity={selectedCity}
           setSelectedCity={(id) => {
             setSelectedCity(id);
-            closeSidebarOnMobile();
           }}
           setSelectedLocation={setSelectedLocation}
           wishlistCityIds={wishlistCityIds}
@@ -692,10 +777,7 @@ const Dashboard = () => {
           onCloseMobile={closeSidebar}
           onLogOut={handleLogoutClick}
           darkMode={darkMode}
-          toggleTheme={() => {
-            setHasUserThemePreference(true);
-            setDarkMode((prev) => !prev);
-          }}
+          toggleTheme={onToggleTheme}
           onDesktopToggle={() => {
             if (isSidebarOpen) {
               closeSidebar();
@@ -704,11 +786,12 @@ const Dashboard = () => {
             }
           }}
           isExpanded={isSidebarOpen}
+          onOpenAccountOverlay={() => setIsAccountOverlayOpen(true)}
         />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-2 sm:p-3 md:p-4 overflow-y-auto w-full md:w-auto h-[calc(100vh-72px)] md:h-screen relative">
+      <div className="flex-1 p-2 sm:p-3 md:p-4 overflow-y-auto w-full md:w-auto h-[calc(100vh-72px)] md:h-screen relative md:border-l md:border-slate-200/10">
         {/* No city selected */}
         {activeSection === "cities" && !selectedCity && (
           <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-400 text-xl">
@@ -722,6 +805,8 @@ const Dashboard = () => {
             currentCity={currentCity}
             filteredLocations={filteredLocations}
             setSelectedLocation={setSelectedLocation}
+            wishlistCityIds={wishlistCityIds}
+            toggleCityWishlist={toggleCityWishlist}
             wishlistLocationIds={wishlistLocationIds}
             toggleLocationWishlist={toggleLocationWishlist}
             travelHistoryLocationIds={travelHistoryLocationIds}
@@ -739,7 +824,11 @@ const Dashboard = () => {
           />
         )}
 
-        {activeSection === "chatbot" && <ChatbotView userId={User?.id} />}
+        {activeSection === "chatbot" && (
+          <div className="h-full min-h-0">
+            <ChatbotView userId={User?.id} />
+          </div>
+        )}
 
         {activeSection === "travelHistory" && (
           <TravelHistoryView
@@ -786,6 +875,23 @@ const Dashboard = () => {
         )}
       </div>
 
+      <AccountOverlay
+        isOpen={isAccountOverlayOpen}
+        onClose={() => setIsAccountOverlayOpen(false)}
+        user={User}
+        darkMode={darkMode}
+        onToggleTheme={onToggleTheme}
+        onSaveProfile={handleSaveProfile}
+        onDeleteAccount={handleDeleteAccount}
+        onLogout={handleLogoutClick}
+        onUploadProfileImage={uploadProfileImage}
+        onSubmitReport={handleSubmitReport}
+        accountStats={accountStats}
+        wishlistItems={wishlistItems}
+        travelHistoryItems={travelHistoryItems}
+        preview={preview}
+      />
+
       {/* Authentication Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -802,7 +908,9 @@ const Dashboard = () => {
             </p>
             <div className="flex flex-col gap-3 w-full">
               <button
-                onClick={() => navigate("/ghumphir/login")}
+                onClick={() =>
+                  navigate("/ghumphir?auth=login&next=/ghumphir/dashboard")
+                }
                 className="w-full bg-sky-600 text-white font-semibold py-3 rounded-xl hover:bg-sky-700 transition"
               >
                 Sign In
@@ -835,7 +943,7 @@ const Dashboard = () => {
               <button
                 onClick={() => {
                   localStorage.removeItem("token");
-                  navigate("/ghumphir/login");
+                  navigate("/ghumphir");
                 }}
                 className="w-full bg-red-600 text-white font-semibold py-3 rounded-xl hover:bg-red-700 transition"
               >

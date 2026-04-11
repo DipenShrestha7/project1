@@ -24,6 +24,15 @@ type image = {
   image_description: string;
 };
 
+type userReport = {
+  report_id: number;
+  user_id: number | null;
+  type: "bug" | "feedback" | "feature_requests";
+  message: string;
+  status: "open" | "in_progress" | "resolved" | "closed";
+  created_at: string;
+};
+
 type NotificationType = "success" | "error" | "info";
 
 type Notification = {
@@ -90,6 +99,7 @@ export default function AdminPanel() {
   const [searchImageLocationId, setSearchImageLocationId] = useState("");
   const [fetchedImage, setFetchedImage] = useState<image | null>(null);
   const [fetchedImages, setFetchedImages] = useState<image[] | null>(null);
+  const [reports, setReports] = useState<userReport[]>([]);
   const [notification, setNotification] = useState<Notification | null>(null);
 
   const showNotification = (type: NotificationType, message: string) => {
@@ -130,7 +140,8 @@ export default function AdminPanel() {
 
     const payload: Record<string, string> = {};
     if (updateCityName.trim()) payload.city_name = updateCityName;
-    if (updateCityDescription.trim()) payload.description = updateCityDescription;
+    if (updateCityDescription.trim())
+      payload.description = updateCityDescription;
 
     if (Object.keys(payload).length === 0) {
       showNotification("info", "Please provide at least one new value");
@@ -370,6 +381,47 @@ export default function AdminPanel() {
     const res = await fetch("http://localhost:9000/api/admin/images");
     const data = await res.json();
     console.log(data);
+  };
+
+  const handleGetReports = async () => {
+    const res = await fetch("http://localhost:9000/api/admin/reports");
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      showNotification("error", "Failed to fetch user reports");
+      return;
+    }
+    setReports(data);
+    showNotification("success", "User reports loaded");
+  };
+
+  const handleUpdateReportStatus = async (
+    reportId: number,
+    status: "open" | "in_progress" | "resolved" | "closed",
+  ) => {
+    const res = await fetch(
+      `http://localhost:9000/api/admin/reports/${reportId}/status`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      },
+    );
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      showNotification(
+        "error",
+        errorData.message || "Failed to update report status",
+      );
+      return;
+    }
+
+    setReports((prev) =>
+      prev.map((report) =>
+        report.report_id === reportId ? { ...report, status } : report,
+      ),
+    );
+    showNotification("success", `Report #${reportId} marked ${status}`);
   };
 
   return (
@@ -707,6 +759,79 @@ export default function AdminPanel() {
             </div>
           )}
         </Container>
+
+        {/* USER REPORTS */}
+        <div className="bg-gray-900 p-6 rounded-xl shadow-lg w-full max-w-6xl">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h2 className="text-lg font-semibold">User Reports</h2>
+            <button
+              onClick={handleGetReports}
+              className="rounded bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:opacity-85"
+            >
+              Refresh Reports
+            </button>
+          </div>
+
+          {reports.length === 0 ? (
+            <p className="text-sm text-gray-400">No reports loaded yet.</p>
+          ) : (
+            <div className="overflow-x-auto rounded border border-gray-700">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-800 text-gray-200">
+                  <tr>
+                    <th className="px-3 py-2 text-left">ID</th>
+                    <th className="px-3 py-2 text-left">User ID</th>
+                    <th className="px-3 py-2 text-left">Type</th>
+                    <th className="px-3 py-2 text-left">Message</th>
+                    <th className="px-3 py-2 text-left">Status</th>
+                    <th className="px-3 py-2 text-left">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.map((report) => (
+                    <tr
+                      key={report.report_id}
+                      className="border-t border-gray-800 align-top"
+                    >
+                      <td className="px-3 py-2">{report.report_id}</td>
+                      <td className="px-3 py-2">{report.user_id ?? "-"}</td>
+                      <td className="px-3 py-2 uppercase text-xs tracking-wide">
+                        {report.type}
+                      </td>
+                      <td className="px-3 py-2 max-w-lg whitespace-pre-wrap wrap-break-word">
+                        {report.message}
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          value={report.status}
+                          onChange={(e) =>
+                            void handleUpdateReportStatus(
+                              report.report_id,
+                              e.target.value as
+                                | "open"
+                                | "in_progress"
+                                | "resolved"
+                                | "closed",
+                            )
+                          }
+                          className="rounded bg-gray-800 border border-gray-600 px-2 py-1"
+                        >
+                          <option value="open">open</option>
+                          <option value="in_progress">in_progress</option>
+                          <option value="resolved">resolved</option>
+                          <option value="closed">closed</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {new Date(report.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

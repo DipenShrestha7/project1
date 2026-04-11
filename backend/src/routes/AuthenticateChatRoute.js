@@ -76,11 +76,6 @@ function AuthenticateChatRoute(fastify) {
         session_id: String(session_id), // ← Convert to string for Python
         history,
       };
-      console.log(
-        "📤 Sending to Python:",
-        JSON.stringify(requestBody, null, 2),
-      );
-
       // Save the user message to database
       await ChatMessageModel.create({
         session_id,

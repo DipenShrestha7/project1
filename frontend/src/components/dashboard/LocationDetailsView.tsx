@@ -60,38 +60,38 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
         setIsWishlistDropdownOpen(false);
       }}
     >
-      <div className="mb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <section className="mb-8 rounded-3xl border border-slate-200 bg-linear-to-br from-slate-100 via-slate-50 to-sky-100 p-5 sm:p-6 shadow-lg shadow-slate-300/40 dark:border-white/10 dark:from-slate-900/60 dark:via-slate-800/45 dark:to-sky-950/35 dark:shadow-black/10">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
           <div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setSelectedLocation(null)}
                 aria-label="Back"
-                className="inline-flex items-center px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition"
+                className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-3 py-2 text-white shadow-md transition hover:bg-sky-400"
               >
                 <ArrowLeft size={18} />
               </button>
-              <h2 className="text-3xl font-semibold leading-tight text-sky-900 dark:text-sky-400">
+              <h2 className="text-3xl font-semibold leading-tight text-sky-700 dark:text-sky-300 sm:text-4xl">
                 {currentLocation?.name}
               </h2>
             </div>
 
-            <p className="mt-4 text-justify text-slate-700 dark:text-slate-300">
+            <p className="mt-4 max-w-3xl text-justify text-sm leading-8 text-slate-700 dark:text-slate-200/95 sm:text-base">
               {currentLocation?.description}
             </p>
 
             {currentLocation && (
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <div className="relative flex">
+              <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div className="relative">
                   {wishlistLocationIds.has(currentLocation.id) ? (
-                    <div className="flex">
+                    <div className="flex w-full overflow-visible rounded-2xl border border-pink-300 bg-pink-100 dark:border-pink-300/30 dark:bg-pink-500/12">
                       <button
                         onClick={(event) => {
                           event.stopPropagation();
                         }}
-                        className="flex items-center gap-2 text-sm px-3.5 py-2 rounded-l-lg border-y border-l font-medium cursor-default transition bg-pink-100 border-pink-300 text-pink-700 dark:bg-pink-700 dark:border-pink-600 dark:text-white"
+                        className="flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-pink-700 dark:text-pink-100"
                       >
-                        <Heart size={15} />
+                        <Heart size={15} fill="currentColor" />
                         In Wishlist
                         <Check size={15} />
                       </button>
@@ -101,20 +101,20 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
                           setIsWishlistDropdownOpen(!isWishlistDropdownOpen);
                           setIsDropdownOpen(false);
                         }}
-                        className="flex items-center justify-center px-2 border-y border-r rounded-r-lg font-medium cursor-pointer transition bg-pink-100 border-pink-300 text-pink-700 hover:bg-pink-200 dark:bg-pink-700 dark:border-pink-600 dark:text-white dark:hover:bg-pink-600"
+                        className="flex items-center justify-center border-l border-pink-300 px-3 text-pink-700 transition hover:bg-pink-200 dark:border-pink-300/25 dark:text-pink-100 dark:hover:bg-pink-500/15"
                       >
                         <MoreVertical size={15} />
                       </button>
 
                       {isWishlistDropdownOpen && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                        <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-xl dark:border-slate-700 dark:bg-gray-800">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleLocationWishlist(currentLocation.id);
                               setIsWishlistDropdownOpen(false);
                             }}
-                            className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                            className="w-full px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50 dark:hover:bg-red-900/20"
                           >
                             Remove from Wishlist
                           </button>
@@ -123,7 +123,7 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
                               e.stopPropagation();
                               setIsWishlistDropdownOpen(false);
                             }}
-                            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                            className="w-full px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
                           >
                             Cancel
                           </button>
@@ -133,23 +133,24 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
                   ) : (
                     <button
                       onClick={() => toggleLocationWishlist(currentLocation.id)}
-                      className="flex items-center gap-2 text-sm px-3.5 py-2 rounded-lg border font-medium transition cursor-pointer bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-slate-50 dark:border-slate-200/20 dark:bg-white/8 dark:text-slate-100 dark:hover:border-sky-300/30 dark:hover:bg-white/12"
                     >
                       <Heart size={15} />
                       Add to Wishlist
                     </button>
                   )}
                 </div>
-                <div className="relative flex">
+
+                <div className="relative">
                   {travelHistoryLocationIds.has(currentLocation.id) ? (
-                    <div className="flex">
+                    <div className="flex w-full overflow-visible rounded-2xl border border-emerald-300 bg-emerald-100 dark:border-emerald-300/30 dark:bg-emerald-500/14">
                       <button
                         onClick={(event) => {
                           event.stopPropagation();
                         }}
-                        className="flex items-center gap-2 text-sm px-3.5 py-2 rounded-l-lg border-y border-l font-medium cursor-default transition bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-700 dark:border-emerald-600 dark:text-white"
+                        className="flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-emerald-700 dark:text-emerald-100"
                       >
-                        <History size={15} />
+                        <History size={15} fill="currentColor" />
                         Visited
                         <Check size={15} />
                       </button>
@@ -159,13 +160,13 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
                           setIsDropdownOpen(!isDropdownOpen);
                           setIsWishlistDropdownOpen(false);
                         }}
-                        className="flex items-center justify-center px-2 border-y border-r rounded-r-lg font-medium cursor-pointer transition bg-emerald-100 border-emerald-300 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-700 dark:border-emerald-600 dark:text-white dark:hover:bg-emerald-600"
+                        className="flex items-center justify-center border-l border-emerald-300 px-3 text-emerald-700 transition hover:bg-emerald-200 dark:border-emerald-300/25 dark:text-emerald-100 dark:hover:bg-emerald-500/18"
                       >
                         <MoreVertical size={15} />
                       </button>
 
                       {isDropdownOpen && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                        <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-xl dark:border-slate-700 dark:bg-gray-800">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -175,7 +176,7 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
                               );
                               setIsDropdownOpen(false);
                             }}
-                            className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                            className="w-full px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50 dark:hover:bg-red-900/20"
                           >
                             Remove from Visited
                           </button>
@@ -184,7 +185,7 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
                               e.stopPropagation();
                               setIsDropdownOpen(false);
                             }}
-                            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                            className="w-full px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
                           >
                             Cancel
                           </button>
@@ -199,7 +200,7 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
                           "travelHistory",
                         )
                       }
-                      className="flex items-center gap-2 text-sm px-3.5 py-2 rounded-lg border font-medium transition cursor-pointer bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-slate-50 dark:border-slate-200/20 dark:bg-white/8 dark:text-slate-100 dark:hover:border-sky-300/30 dark:hover:bg-white/12"
                     >
                       <History size={15} />
                       Mark Visited
@@ -212,9 +213,9 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
 
           <div>
             {hasValidCoordinates ? (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-md">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-md dark:border-white/10 dark:bg-white/6">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-sm text-slate-700 dark:text-slate-100/90">
                     Coordinates: {parsedLatitude.toFixed(6)},{" "}
                     {parsedLongitude.toFixed(6)}
                   </p>
@@ -222,7 +223,7 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
                     href={googleMapsUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sm text-sky-600 dark:text-sky-400 hover:underline"
+                    className="text-sm font-medium text-sky-700 transition hover:text-sky-600 hover:underline dark:text-sky-300 dark:hover:text-sky-200"
                   >
                     Open in Google Maps
                   </a>
@@ -230,27 +231,26 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
                 <iframe
                   title="Location map"
                   src={mapEmbedUrl}
-                  className="w-full h-84 rounded-xl border border-slate-200 dark:border-slate-700"
+                  className="h-84 w-full rounded-xl border border-slate-200 dark:border-white/12"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                 />
               </div>
             ) : (
-              <p className="text-sm text-amber-600 dark:text-amber-400">
+              <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-700 dark:border-amber-300/30 dark:bg-amber-500/10 dark:text-amber-200">
                 Map unavailable: this location is missing valid
                 latitude/longitude.
-              </p>
+              </div>
             )}
           </div>
         </div>
+      </section>
 
-        <div className="py-4 w-1/3"></div>
-        <div className="flex items-center gap-2 mb-6">
-          <Camera className="text-sky-600" />
-          <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400">
-            Location Images
-          </h2>
-        </div>
+      <div className="mb-6 flex items-center gap-2">
+        <Camera className="text-sky-600" />
+        <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400">
+          Location Images
+        </h2>
       </div>
 
       {filteredImages.length === 0 && (

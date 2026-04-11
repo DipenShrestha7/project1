@@ -1,11 +1,13 @@
 import React from "react";
-import { Heart, History, MoreVertical } from "lucide-react";
+import { Heart, History, MapPin, MoreVertical } from "lucide-react";
 import type { Cities, Locations } from "./types";
 
 interface CitiesViewProps {
   currentCity?: Cities;
   filteredLocations: Locations[];
   setSelectedLocation: (id: number | null) => void;
+  wishlistCityIds: Set<number>;
+  toggleCityWishlist: (id: number) => void;
   wishlistLocationIds: Set<number>;
   toggleLocationWishlist: (id: number) => void;
   travelHistoryLocationIds: Set<number>;
@@ -19,6 +21,8 @@ const CitiesView: React.FC<CitiesViewProps> = ({
   currentCity,
   filteredLocations,
   setSelectedLocation,
+  wishlistCityIds,
+  toggleCityWishlist,
   wishlistLocationIds,
   toggleLocationWishlist,
   travelHistoryLocationIds,
@@ -29,6 +33,13 @@ const CitiesView: React.FC<CitiesViewProps> = ({
   );
   const [activeWishlistDropdownId, setActiveWishlistDropdownId] =
     React.useState<number | null>(null);
+  const locationCount = filteredLocations.length;
+  const visitedCount = filteredLocations.filter((loc) =>
+    travelHistoryLocationIds.has(loc.id),
+  ).length;
+  const wishlistCount = filteredLocations.filter((loc) =>
+    wishlistLocationIds.has(loc.id),
+  ).length;
 
   return (
     <div
@@ -37,37 +48,149 @@ const CitiesView: React.FC<CitiesViewProps> = ({
         setActiveWishlistDropdownId(null);
       }}
     >
-      <h2 className="text-3xl font-semibold text-sky-900 dark:text-sky-400 mb-2">
-        {currentCity?.name?.toUpperCase()}
-      </h2>
-      <p className="mb-6 text-justify text-slate-700 dark:text-slate-300">
-        {currentCity?.description || "No description available"}
-      </p>
+      <section className="mb-7 rounded-3xl border border-slate-200 bg-linear-to-br from-slate-100 via-slate-50 to-sky-100 p-5 sm:p-6 shadow-lg shadow-slate-300/40 dark:border-white/10 dark:from-slate-900/60 dark:via-slate-800/45 dark:to-sky-950/35 dark:shadow-black/10">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <div className="max-w-3xl">
+            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-sky-700 dark:text-sky-300">
+              {currentCity?.name?.toUpperCase()}
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm sm:text-base leading-7 text-slate-700 dark:text-slate-200/90">
+              {currentCity?.description || "No description available"}
+            </p>
+            {currentCity && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleCityWishlist(currentCity.id);
+                  }}
+                  className={`inline-flex items-center justify-center gap-2 self-start rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${wishlistCityIds.has(currentCity.id) ? "border-pink-300 bg-pink-100 text-pink-700 hover:bg-pink-200 dark:border-pink-500/40 dark:bg-pink-500/15 dark:text-pink-100" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-gray-800/70 dark:text-slate-100 dark:hover:bg-gray-700"}`}
+                  aria-label={
+                    wishlistCityIds.has(currentCity.id)
+                      ? `Remove ${currentCity.name} from wishlist`
+                      : `Add ${currentCity.name} to wishlist`
+                  }
+                  title={
+                    wishlistCityIds.has(currentCity.id)
+                      ? `Remove ${currentCity.name} from wishlist`
+                      : `Add ${currentCity.name} to wishlist`
+                  }
+                >
+                  <Heart
+                    size={16}
+                    fill={
+                      wishlistCityIds.has(currentCity.id)
+                        ? "currentColor"
+                        : "none"
+                    }
+                  />
+                  {wishlistCityIds.has(currentCity.id)
+                    ? "Remove City from Wishlist"
+                    : "Add City to Wishlist"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/6">
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-200/85">
+                <MapPin size={15} className="text-sky-600 dark:text-sky-300" />
+                <span className="text-xs font-semibold uppercase tracking-[0.18em]">
+                  Locations
+                </span>
+              </div>
+              <p className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">
+                {locationCount}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/6">
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-200/85">
+                <History
+                  size={15}
+                  className="text-emerald-600 dark:text-emerald-300"
+                />
+                <span className="text-xs font-semibold uppercase tracking-[0.18em]">
+                  Visited
+                </span>
+              </div>
+              <p className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">
+                {visitedCount}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/6">
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-200/85">
+                <Heart size={15} className="text-pink-600 dark:text-pink-300" />
+                <span className="text-xs font-semibold uppercase tracking-[0.18em]">
+                  Wishlist
+                </span>
+              </div>
+              <p className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">
+                {wishlistCount}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <h3 className="text-2xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
         Locations
       </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {filteredLocations.map((loc) => (
           <div
             key={loc.id}
             onClick={() => setSelectedLocation(loc.id)}
-            className="cursor-pointer bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md hover:shadow-lg transition"
+            className={`group relative cursor-pointer overflow-visible rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-lg shadow-slate-300/40 transition hover:-translate-y-0.5 hover:border-sky-300/45 hover:bg-slate-50 hover:shadow-xl dark:border-white/10 dark:bg-white/6 dark:shadow-black/10 dark:hover:border-sky-300/25 dark:hover:bg-white/8 ${
+              activeWishlistDropdownId === loc.id || activeDropdownId === loc.id
+                ? "z-40"
+                : "z-0"
+            }`}
           >
-            <h3 className="text-lg font-semibold text-sky-800 dark:text-sky-300">
-              {loc.name}
-            </h3>
-            <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-2">
-              <div className="relative flex">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="truncate text-xl font-semibold text-sky-700 transition group-hover:text-sky-600 dark:text-sky-200 dark:group-hover:text-sky-100">
+                  {loc.name}
+                </h3>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {loc.description ||
+                    "Open this location to view images and details."}
+                </p>
+              </div>
+
+              {(wishlistLocationIds.has(loc.id) ||
+                travelHistoryLocationIds.has(loc.id)) && (
+                <div className="flex shrink-0 flex-col gap-2 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                  {wishlistLocationIds.has(loc.id) && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-pink-300 bg-pink-100 px-2.5 py-1 text-pink-700 dark:border-pink-300/30 dark:bg-pink-500/15 dark:text-pink-100">
+                      <Heart size={12} />
+                      Wishlist
+                    </span>
+                  )}
+                  {travelHistoryLocationIds.has(loc.id) && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-100 px-2.5 py-1 text-emerald-700 dark:border-emerald-300/30 dark:bg-emerald-500/15 dark:text-emerald-100">
+                      <History size={12} />
+                      Visited
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="relative">
                 {wishlistLocationIds.has(loc.id) ? (
-                  <div className="flex w-full">
+                  <div className="flex w-full overflow-hidden rounded-2xl border border-pink-300 bg-pink-100 dark:border-pink-300/25 dark:bg-pink-500/14">
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
                       }}
-                      className="flex-1 flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-l-lg border-y border-l font-medium cursor-default transition bg-pink-100 border-pink-300 text-pink-700 dark:bg-pink-700 dark:border-pink-600 dark:text-white"
+                      className="flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-pink-700 dark:text-pink-100"
                     >
-                      <Heart size={14} />
+                      <Heart size={15} fill="currentColor" />
                       In Wishlist
                     </button>
                     <button
@@ -78,20 +201,20 @@ const CitiesView: React.FC<CitiesViewProps> = ({
                         );
                         setActiveDropdownId(null);
                       }}
-                      className="flex items-center justify-center px-1.5 border-y border-r rounded-r-lg font-medium cursor-pointer transition bg-pink-100 border-pink-300 text-pink-700 hover:bg-pink-200 dark:bg-pink-700 dark:border-pink-600 dark:text-white dark:hover:bg-pink-600 relative"
+                      className="flex items-center justify-center border-l border-pink-300 px-3 text-pink-700 transition hover:bg-pink-200 dark:border-pink-300/25 dark:text-pink-100 dark:hover:bg-pink-500/20"
                     >
-                      <MoreVertical size={14} />
+                      <MoreVertical size={15} />
                     </button>
 
                     {activeWishlistDropdownId === loc.id && (
-                      <div className="absolute left-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                      <div className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-xl dark:border-slate-700 dark:bg-gray-800">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleLocationWishlist(loc.id);
                             setActiveWishlistDropdownId(null);
                           }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                          className="w-full px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           Remove from Wishlist
                         </button>
@@ -100,7 +223,7 @@ const CitiesView: React.FC<CitiesViewProps> = ({
                             e.stopPropagation();
                             setActiveWishlistDropdownId(null);
                           }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                          className="w-full px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
                           Cancel
                         </button>
@@ -113,23 +236,24 @@ const CitiesView: React.FC<CitiesViewProps> = ({
                       event.stopPropagation();
                       toggleLocationWishlist(loc.id);
                     }}
-                    className="w-full flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-medium cursor-pointer transition bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:bg-slate-50 dark:border-slate-600 dark:bg-gray-800/60 dark:text-slate-200 dark:hover:bg-gray-700"
                   >
-                    <Heart size={14} />
+                    <Heart size={15} />
                     Add to Wishlist
                   </button>
                 )}
               </div>
-              <div className="relative flex">
+
+              <div className="relative">
                 {travelHistoryLocationIds.has(loc.id) ? (
-                  <div className="flex w-full">
+                  <div className="flex w-full overflow-hidden rounded-2xl border border-emerald-300 bg-emerald-100 dark:border-emerald-300/25 dark:bg-emerald-500/14">
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
                       }}
-                      className="flex-1 flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-l-lg border-y border-l font-medium cursor-default transition bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-700 dark:border-emerald-600 dark:text-white"
+                      className="flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-emerald-700 dark:text-emerald-100"
                     >
-                      <History size={14} />
+                      <History size={15} fill="currentColor" />
                       Visited
                     </button>
                     <button
@@ -140,20 +264,20 @@ const CitiesView: React.FC<CitiesViewProps> = ({
                         );
                         setActiveWishlistDropdownId(null);
                       }}
-                      className="flex items-center justify-center px-1.5 border-y border-r rounded-r-lg font-medium cursor-pointer transition bg-emerald-100 border-emerald-300 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-700 dark:border-emerald-600 dark:text-white dark:hover:bg-emerald-600"
+                      className="flex items-center justify-center border-l border-emerald-300 px-3 text-emerald-700 transition hover:bg-emerald-200 dark:border-emerald-300/25 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
                     >
-                      <MoreVertical size={14} />
+                      <MoreVertical size={15} />
                     </button>
 
                     {activeDropdownId === loc.id && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                      <div className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-xl dark:border-slate-700 dark:bg-gray-800">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleLocationCollection(loc.id, "travelHistory");
                             setActiveDropdownId(null);
                           }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                          className="w-full px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           Remove from Visited
                         </button>
@@ -162,7 +286,7 @@ const CitiesView: React.FC<CitiesViewProps> = ({
                             e.stopPropagation();
                             setActiveDropdownId(null);
                           }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                          className="w-full px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
                           Cancel
                         </button>
@@ -175,15 +299,15 @@ const CitiesView: React.FC<CitiesViewProps> = ({
                       event.stopPropagation();
                       toggleLocationCollection(loc.id, "travelHistory");
                     }}
-                    className="w-full flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-medium cursor-pointer transition bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:bg-slate-50 dark:border-slate-600 dark:bg-gray-800/60 dark:text-slate-200 dark:hover:bg-gray-700"
                   >
-                    <History size={14} />
+                    <History size={15} />
                     Mark Visited
                   </button>
                 )}
               </div>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
+            <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400/90">
               Tap to view images
             </p>
           </div>

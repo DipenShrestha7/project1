@@ -21,7 +21,6 @@ interface DashboardSidebarProps {
   onAuthRequired: () => void;
   User?: User;
   preview: string | null;
-  handleFile: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   activeSection: ActiveSection;
   setActiveSection: (s: ActiveSection) => void;
   searchCity: string;
@@ -38,12 +37,12 @@ interface DashboardSidebarProps {
   toggleTheme: () => void;
   onDesktopToggle?: () => void;
   isExpanded?: boolean;
+  onOpenAccountOverlay?: () => void;
 }
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   User,
   preview,
-  handleFile,
   activeSection,
   setActiveSection,
   searchCity,
@@ -61,12 +60,20 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   toggleTheme,
   onDesktopToggle,
   isExpanded = true,
+  onOpenAccountOverlay,
 }) => {
   const navigate = useNavigate();
   const navIconSize = 18;
   const sidebarToggleIconSize = 20;
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const getProfileImageSrc = (profileImage: string) => {
+    if (/^https?:\/\//i.test(profileImage)) {
+      return profileImage;
+    }
+    return `http://localhost:9000${profileImage}`;
+  };
 
   const handleRestrictedNavigation = (section: ActiveSection) => {
     if (!User?.id) {
@@ -101,28 +108,28 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   }, [profileMenuOpen]);
 
   return (
-    <div className="w-full h-full bg-white dark:bg-gray-800 shadow-xl py-4 px-1.5 flex flex-col gap-6 transition-colors shrink-0 overflow-hidden">
+    <div className="w-full h-full bg-linear-to-b from-slate-100 via-slate-50 to-white dark:from-[#0a1b38] dark:via-[#08162d] dark:to-[#071224] shadow-xl py-4 px-2 flex flex-col gap-5 transition-colors shrink-0 overflow-hidden text-slate-700 dark:text-slate-100">
       {/* Mobile Title & Close Button */}
-      <div className="flex items-center justify-between mb-2 md:hidden">
-        <h1 className="font-bold text-2xl text-sky-600 dark:text-sky-400">
+      <div className="flex items-center justify-between mb-2 md:hidden px-1">
+        <h1 className="font-bold text-2xl text-sky-700 dark:text-sky-300">
           Menu
         </h1>
         <button
           onClick={onCloseMobile}
-          className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition"
+          className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white rounded-full transition"
         >
           <X size={24} />
         </button>
       </div>
 
       <div
-        className={`hidden md:flex items-center -mb-3 w-full transition-all duration-300 ${isExpanded ? "justify-between gap-3" : "justify-center"}`}
+        className={`hidden md:flex items-center -mb-2 w-full transition-all duration-300 ${isExpanded ? "justify-between gap-3" : "justify-center"}`}
       >
         {isExpanded && (
           <button
             type="button"
             onClick={() => window.location.assign("/ghumphir/dashboard")}
-            className="h-10 flex items-center gap-2 pl-2.5 pr-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+            className="h-10 flex items-center gap-2 pl-2.5 pr-2.5 py-2 rounded-xl bg-transparent hover:bg-white/5 dark:hover:bg-white/5 transition"
           >
             <img
               src={logo}
@@ -130,7 +137,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className="h-8 w-8 rounded object-contain shrink-0"
             />
             <span
-              className={`ml-0 text-[16px] font-semibold text-slate-700 dark:text-slate-200 truncate
+              className={`ml-0 text-[16px] font-semibold text-slate-800 dark:text-slate-100 truncate
               overflow-hidden transition-all duration-300 whitespace-nowrap
               ${isExpanded ? "max-w-25 opacity-100" : "max-w-0 opacity-0"}`}
             >
@@ -142,7 +149,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         <button
           type="button"
           onClick={onDesktopToggle}
-          className={`items-center rounded-xl text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex shrink-0 ${isExpanded ? "h-10 w-10 justify-center" : "h-10 w-10 justify-center"}`}
+          className={`items-center rounded-xl text-slate-600 hover:bg-white/5 dark:text-slate-200 dark:hover:bg-white/5 transition flex shrink-0 ${isExpanded ? "h-10 w-10 justify-center" : "h-10 w-10 justify-center"}`}
           aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
           title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
         >
@@ -151,13 +158,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col w-full min-w-0">
-        <div className="flex flex-col gap-1.5 mb-4">
+        <div className="flex flex-col gap-1.5 mb-4 px-0.5">
           <button
             onClick={() => handleRestrictedNavigation("chatbot")}
             className={`flex items-center ${isExpanded ? "gap-2 px-3.5 py-2 justify-start" : "justify-center w-10 h-10 mx-auto"} rounded-xl transition ${
               activeSection === "chatbot"
-                ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+                ? "bg-sky-600 text-white"
+                : "bg-transparent hover:bg-slate-200/70 text-slate-700 dark:hover:bg-white/10 dark:text-slate-100"
             }`}
             aria-label="Chatbot"
             title="Chatbot"
@@ -174,8 +181,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             onClick={() => handleRestrictedNavigation("wishlist")}
             className={`flex items-center ${isExpanded ? "gap-2 px-3.5 py-2 justify-start" : "justify-center w-10 h-10 mx-auto"} rounded-xl transition ${
               activeSection === "wishlist"
-                ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+                ? "bg-sky-600 text-white"
+                : "bg-transparent hover:bg-slate-200/70 text-slate-700 dark:hover:bg-white/10 dark:text-slate-100"
             }`}
             aria-label="Wishlist"
             title="Wishlist"
@@ -192,8 +199,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             onClick={() => handleRestrictedNavigation("travelHistory")}
             className={`flex items-center ${isExpanded ? "gap-2 px-3.5 py-2 justify-start" : "justify-center w-10 h-10 mx-auto"} rounded-xl transition ${
               activeSection === "travelHistory"
-                ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+                ? "bg-sky-600 text-white"
+                : "bg-transparent hover:bg-slate-200/70 text-slate-700 dark:hover:bg-white/10 dark:text-slate-100"
             }`}
             aria-label="Travel History"
             title="Travel History"
@@ -214,8 +221,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             }}
             className={`flex items-center ${isExpanded ? "gap-2 px-3.5 py-2 justify-start" : "justify-center w-10 h-10 mx-auto"} rounded-xl transition ${
               activeSection === "cities"
-                ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+                ? "bg-sky-600 text-white"
+                : "bg-transparent hover:bg-slate-200/70 text-slate-700 dark:hover:bg-white/10 dark:text-slate-100"
             }`}
             aria-label="Cities"
             title="Cities"
@@ -234,7 +241,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <div className="flex-1 min-h-0 flex flex-col px-0.5">
             <div className="relative mt-0 mb-2">
               <input
-                className="border border-black py-2 pl-8 pr-2 bg-white text-black dark:bg-slate-800 text-[15px] rounded-xl w-full dark:border-white dark:text-white"
+                className="border border-slate-300 py-2.5 pl-8 pr-3 bg-white text-slate-700 dark:border-white/25 dark:bg-white/6 dark:text-slate-100 text-[14px] rounded-xl w-full placeholder:text-slate-400 focus:outline-none focus:border-sky-300/60"
                 placeholder="Search cities"
                 type="text"
                 value={searchCity}
@@ -245,7 +252,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 size={15}
               />
             </div>
-            <div className="flex-1 min-h-0 flex flex-col gap-1.5 overflow-y-auto dashboard-scrollbar pr-0">
+            <div className="flex-1 min-h-0 flex flex-col gap-1.5 overflow-y-auto dashboard-scrollbar pr-0.5">
               {filteredCities.map((city) => (
                 <div
                   key={city.id}
@@ -253,15 +260,15 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                     setSelectedCity(city.id);
                     setSelectedLocation(null);
                   }}
-                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 px-1.5 py-2 rounded-xl text-[15px] transition cursor-pointer ${
+                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 px-2 py-2 rounded-xl text-[14px] transition cursor-pointer ${
                     selectedCity === city.id
-                      ? "bg-sky-100 text-sky-700 dark:bg-sky-700 dark:text-white"
-                      : "hover:bg-slate-100 text-slate-700 dark:hover:bg-gray-700 dark:text-slate-200"
+                      ? "bg-sky-600 text-white"
+                      : "bg-transparent hover:bg-slate-200/70 text-slate-700 dark:hover:bg-white/10 dark:text-slate-100"
                   }`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     <MapPin size={navIconSize} className="shrink-0" />
-                    <span className="truncate leading-tight text-[14px]">
+                    <span className="truncate leading-tight text-[13px] font-medium tracking-[0.03em]">
                       {city.name?.toUpperCase()}
                     </span>
                   </div>
@@ -271,7 +278,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                       event.stopPropagation();
                       toggleCityWishlist(city.id);
                     }}
-                    className="p-0.5 rounded-full hover:bg-white/40 dark:hover:bg-black/20 transition shrink-0 justify-self-end"
+                    className="p-1 rounded-full hover:bg-slate-200/70 dark:hover:bg-slate-600/60 transition shrink-0 justify-self-end"
                     aria-label={
                       wishlistCityIds.has(city.id)
                         ? `Remove ${city.name} from city wishlist`
@@ -298,7 +305,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       </div>
 
       {User && (
-        <div className="-mt-4 -mb-2.5 pt-1.5 border-t border-slate-200 dark:border-slate-700">
+        <div className="-mt-3 -mb-1 pt-2 border-t border-slate-300 dark:border-white/12">
           <div className="relative" ref={profileMenuRef}>
             <button
               onClick={() => {
@@ -308,18 +315,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   onDesktopToggle?.();
                 }
               }}
-              className={`flex items-center text-black dark:text-white rounded-lg transition group cursor-pointer ${isExpanded ? "w-full gap-2 px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-gray-700" : "w-12 h-12 mx-auto justify-center p-1.5  hover:bg-gray-700 shadow-md"}`}
+              className={`flex items-center text-slate-800 dark:text-white rounded-xl transition group cursor-pointer ${isExpanded ? "w-full gap-2 px-3 py-2.5 bg-slate-200/70 hover:bg-slate-200 dark:bg-white/8 dark:hover:bg-white/12" : "w-12 h-12 mx-auto justify-center p-1.5 bg-slate-200/70 hover:bg-slate-200 dark:bg-white/8 dark:hover:bg-white/12 shadow-md"}`}
             >
               <div
                 className={`rounded-full overflow-hidden bg-white flex items-center justify-center text-sky-600 font-semibold shrink-0 ${isExpanded ? "w-10 h-10" : "w-9 h-9"}`}
               >
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  id="fileInput"
-                  onChange={handleFile}
-                />
                 {preview ? (
                   <img
                     src={preview}
@@ -328,7 +328,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   />
                 ) : User?.profile_image ? (
                   <img
-                    src={`http://localhost:9000${User.profile_image}`}
+                    src={getProfileImageSrc(User.profile_image)}
                     alt="profile"
                     className={`rounded-full object-cover ${isExpanded ? "w-10 h-10" : "w-9 h-9"}`}
                   />
@@ -351,7 +351,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               {isExpanded && (
                 <Settings
                   size={18}
-                  className="transition shrink-0 ml-auto opacity-90 text-black dark:text-white"
+                  className="transition shrink-0 ml-auto opacity-90 text-slate-700 dark:text-white"
                 />
               )}
             </button>
@@ -360,34 +360,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg shadow-lg py-2 z-50">
                 <button
                   onClick={() => {
-                    document.getElementById("fileInput")?.click();
-                    closeProfileMenu();
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-gray-600 transition"
-                >
-                  Change Profile Picture
-                </button>
-
-                <div className="border-t border-slate-200 dark:border-gray-600 my-1"></div>
-
-                <button
-                  onClick={() => {
-                    toggleTheme();
+                    onOpenAccountOverlay?.();
                     closeProfileMenu();
                   }}
                   className="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-gray-600 transition flex items-center gap-2"
                 >
-                  {darkMode ? (
-                    <>
-                      <Sun size={16} />
-                      Light Mode
-                    </>
-                  ) : (
-                    <>
-                      <Moon size={16} />
-                      Dark Mode
-                    </>
-                  )}
+                  <Settings size={16} />
+                  My Account
                 </button>
 
                 <div className="border-t border-slate-200 dark:border-gray-600 my-1"></div>
@@ -410,7 +389,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
       {/* Auth Buttons Anchored to Bottom - Only show for guests */}
       {!User && (
-        <div className="-mt-3 pt-2.5 -mb-1 border-t border-slate-200 dark:border-slate-700 flex items-center gap-3">
+        <div className="-mt-2 pt-2.5 -mb-1 border-t border-slate-300 dark:border-white/12 flex items-center gap-3">
           <button
             onClick={toggleTheme}
             className="p-3 text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-gray-700/50 rounded-xl hover:bg-sky-200 dark:hover:bg-gray-600 transition shrink-0"
@@ -420,7 +399,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
           {isExpanded && (
             <button
-              onClick={() => navigate("/ghumphir/login")}
+              onClick={() =>
+                navigate("/ghumphir?auth=login&next=/ghumphir/dashboard")
+              }
               className="flex-1 py-3 bg-sky-600 text-white font-semibold rounded-xl hover:bg-sky-700 transition shadow-md"
             >
               Log In

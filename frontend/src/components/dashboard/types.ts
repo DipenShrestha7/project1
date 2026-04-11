@@ -70,6 +70,13 @@ export type HistoryItem = {
 
 export type ActiveSection = "cities" | "chatbot" | "wishlist" | "travelHistory";
 
+export type AccountStats = {
+  wishlistCount: number;
+  visitedCount: number;
+  reviewCount: number;
+  chatSessionsCount: number;
+};
+
 export type Review = {
   user_name: string;
   profile_image: string | null;

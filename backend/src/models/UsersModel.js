@@ -20,7 +20,7 @@ const UsersModel = sequelize.define(
     },
     password_hash: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,

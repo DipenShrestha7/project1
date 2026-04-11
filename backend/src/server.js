@@ -8,6 +8,7 @@ import authenticateCityLocationRoutes from "./routes/AuthenticateCity&LocationRo
 import authenticateWishlistRoute from "./routes/AuthenticateWishlistRoute.js";
 import authenticateHistoryRoute from "./routes/AuthenticateHistoryRoute.js";
 import authenticateChatRoute from "./routes/AuthenticateChatRoute.js";
+import authenticateGoogleRoute from "./routes/AuthenticateGoogleRoute.js";
 import "dotenv/config";
 import path from "path";
 
@@ -16,6 +17,12 @@ const fastify = Fastify({ logger: true });
 fastify.register(fastifyCors, {
   origin: "http://localhost:5173",
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  credentials: true,
+});
+
+fastify.addHook("onSend", (request, reply, payload, done) => {
+  reply.header("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  done();
 });
 
 fastify.register(multipart);
@@ -36,6 +43,7 @@ const start = async () => {
     // so register it without an additional `/api` prefix to avoid `/api/api/...`.
     fastify.register(authenticateHistoryRoute, { prefix: "/api" });
     fastify.register(authenticateChatRoute, { prefix: "/api" });
+    fastify.register(authenticateGoogleRoute, { prefix: "/api" });
 
     const port = process.env.PORT || 9000;
     await fastify.listen({ port: port });
