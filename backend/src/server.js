@@ -14,8 +14,19 @@ import path from "path";
 
 const fastify = Fastify({ logger: true });
 
+const allowedOrigins = new Set([
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+]);
+
 fastify.register(fastifyCors, {
-  origin: "http://localhost:5173",
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error("Not allowed by CORS"), false);
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true,
 });
@@ -25,7 +36,11 @@ fastify.addHook("onSend", (request, reply, payload, done) => {
   done();
 });
 
-fastify.register(multipart);
+fastify.register(multipart, {
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+  },
+});
 fastify.register(fastifyStatic, {
   root: path.join(process.cwd(), "uploads"),
   prefix: "/uploads/",

@@ -5,6 +5,28 @@ import path from "path";
 import fs from "fs";
 import { pipeline } from "stream/promises";
 const normalize = (str) => str.trim().toLowerCase().replace(/\s+/g, "");
+
+const getLocationUploadTarget = async (location_id) => {
+  const location = await LocationsModel.findOne({ where: { location_id } });
+  if (!location) return null;
+
+  const cityFolder = `city_${location.city_id}`;
+  const locationFolder = `location_${location.location_id}`;
+  const uploadDir = path.join(
+    process.cwd(),
+    "uploads",
+    "locations",
+    cityFolder,
+    locationFolder,
+  );
+
+  return {
+    location,
+    uploadDir,
+    relativeUrlBase: `locations/${cityFolder}/${locationFolder}`,
+  };
+};
+
 function authenticateCityLocationRoutes(fastify) {
   //City
   fastify.post("/admin/cities", async (request, reply) => {
@@ -245,21 +267,43 @@ function authenticateCityLocationRoutes(fastify) {
   fastify.post("/admin/image", async (req, reply) => {
     try {
       const parts = req.parts();
-      let location_id, image_description, fileData;
+      let location_id, image_url;
 
       for await (const part of parts) {
         if (part.type === "field") {
           if (part.fieldname === "location_id") {
             location_id = part.value;
-          } else if (part.fieldname === "image_description") {
-            image_description = part.value;
           }
         } else if (part.type === "file") {
-          fileData = part;
+          if (!location_id) {
+            return reply.code(400).send({
+              message:
+                "location_id must be provided before the image file in multipart form data",
+            });
+          }
+
+          const uploadTarget = await getLocationUploadTarget(location_id);
+          if (!uploadTarget) {
+            return reply.code(404).send({ message: "Location not found" });
+          }
+
+          const { uploadDir, relativeUrlBase } = uploadTarget;
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+
+          const uniqueSuffix =
+            Date.now() + "-" + Math.round(Math.random() * 1e9);
+          const ext = path.extname(part.filename) || ".jpg";
+          const filename = `${uniqueSuffix}${ext}`;
+          const savePath = path.join(uploadDir, filename);
+
+          await pipeline(part.file, fs.createWriteStream(savePath));
+          image_url = `http://localhost:9000/uploads/${relativeUrlBase}/${filename}`;
         }
       }
 
-      if (!fileData) {
+      if (!image_url) {
         return reply.code(400).send({ message: "No image file uploaded" });
       }
 
@@ -267,25 +311,9 @@ function authenticateCityLocationRoutes(fastify) {
         return reply.code(400).send({ message: "location_id is required" });
       }
 
-      // Ensure directory exists
-      const uploadDir = path.join(process.cwd(), "uploads", "locations");
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      const ext = path.extname(fileData.filename) || ".jpg";
-      const filename = `${uniqueSuffix}${ext}`;
-      const savePath = path.join(uploadDir, filename);
-
-      await pipeline(fileData.file, fs.createWriteStream(savePath));
-
-      const image_url = `http://localhost:9000/uploads/locations/${filename}`;
-
       const image = await ImageModel.create({
         location_id,
         image_url,
-        image_description: image_description || null,
       });
 
       return {
@@ -342,38 +370,46 @@ function authenticateCityLocationRoutes(fastify) {
       }
 
       const parts = request.parts();
-      let image_description, fileData;
+      let nextImageUrl = null;
 
       for await (const part of parts) {
-        if (part.type === "field") {
-          if (part.fieldname === "image_description") {
-            image_description = part.value;
+        if (part.type === "file") {
+          const uploadTarget = await getLocationUploadTarget(
+            existingImage.location_id,
+          );
+          if (!uploadTarget) {
+            return reply
+              .code(404)
+              .send({ error: "Location linked to this image was not found" });
           }
-        } else if (part.type === "file") {
-          fileData = part;
+
+          const { uploadDir, relativeUrlBase } = uploadTarget;
+          const uniqueSuffix =
+            Date.now() + "-" + Math.round(Math.random() * 1e9);
+          const ext = path.extname(part.filename) || ".jpg";
+          const filename = `${uniqueSuffix}${ext}`;
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          const savePath = path.join(uploadDir, filename);
+
+          await pipeline(part.file, fs.createWriteStream(savePath));
+
+          nextImageUrl = `http://localhost:9000/uploads/${relativeUrlBase}/${filename}`;
         }
       }
 
       const updateData = {};
-      if (fileData) {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        const ext = path.extname(fileData.filename) || ".jpg";
-        const filename = `${uniqueSuffix}${ext}`;
-        const uploadDir = path.join(process.cwd(), "uploads", "locations");
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        const savePath = path.join(uploadDir, filename);
-
-        await pipeline(fileData.file, fs.createWriteStream(savePath));
-
-        updateData.image_url = `http://localhost:9000/uploads/locations/${filename}`;
+      if (nextImageUrl) {
+        updateData.image_url = nextImageUrl;
       }
-      if (typeof image_description === "string" && image_description.trim()) {
-        updateData.image_description = image_description;
-      } else {
-        updateData.image_description = existingImage.image_description;
+
+      if (!updateData.image_url) {
+        return reply
+          .code(400)
+          .send({ error: "Please provide a new image file to update" });
       }
+
       const updated_image = await ImageModel.update(updateData, {
         where: { image_id },
       });

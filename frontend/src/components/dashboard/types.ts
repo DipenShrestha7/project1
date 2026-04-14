@@ -49,14 +49,12 @@ export type Image = {
   image_id: number;
   location_id: number;
   image_url: string;
-  image_description: string;
 };
 
 export type Images = {
   id: number;
   location_id: number;
   image_url: string;
-  image_description: string;
 };
 
 export type HistoryItem = {

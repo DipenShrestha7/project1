@@ -21,7 +21,6 @@ type image = {
   image_id: string;
   location_id: string;
   image_url: string;
-  image_description: string;
 };
 
 type userReport = {
@@ -40,7 +39,16 @@ type Notification = {
   message: string;
 };
 
+type InlineStatus = {
+  type: NotificationType;
+  message: string;
+};
+
 export default function AdminPanel() {
+  const apiHost =
+    window.location.hostname === "127.0.0.1" ? "127.0.0.1" : "localhost";
+  const API_BASE = `http://${apiHost}:9000/api`;
+
   /* =========================
       CITY STATES
   ========================== */
@@ -87,11 +95,9 @@ export default function AdminPanel() {
 
   const [imageLocationId, setImageLocationId] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imageDescription, setImageDescription] = useState("");
 
   const [updateImageId, setUpdateImageId] = useState("");
   const [updateImageFile, setUpdateImageFile] = useState<File | null>(null);
-  const [updateImageDescription, setUpdateImageDescription] = useState("");
 
   const [deleteImageId, setDeleteImageId] = useState("");
 
@@ -101,6 +107,8 @@ export default function AdminPanel() {
   const [fetchedImages, setFetchedImages] = useState<image[] | null>(null);
   const [reports, setReports] = useState<userReport[]>([]);
   const [notification, setNotification] = useState<Notification | null>(null);
+  const [imageInlineStatus, setImageInlineStatus] =
+    useState<InlineStatus | null>(null);
 
   const showNotification = (type: NotificationType, message: string) => {
     setNotification({ type, message });
@@ -116,20 +124,48 @@ export default function AdminPanel() {
     return () => clearTimeout(timeoutId);
   }, [notification]);
 
+  const parseApiResponse = async (res: Response) => {
+    const contentType = res.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
+    const data = isJson ? await res.json().catch(() => null) : null;
+
+    if (!res.ok) {
+      const message =
+        data?.message ||
+        data?.error ||
+        `Request failed with status ${res.status}`;
+      throw new Error(message);
+    }
+
+    return data;
+  };
+
   /* =========================
       CITY FUNCTIONS
   ========================== */
 
   const handleAddCity = async () => {
-    await fetch("http://localhost:9000/api/admin/cities", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        city_name: cityName,
-        description: cityDescription,
-      }),
-    });
-    showNotification("success", "City Added");
+    if (!cityName.trim()) {
+      showNotification("info", "Please provide City Name");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/cities`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          city_name: cityName,
+          description: cityDescription,
+        }),
+      });
+      await parseApiResponse(res);
+      showNotification("success", "City Added");
+      setCityName("");
+      setCityDescription("");
+    } catch (error) {
+      showNotification("error", (error as Error).message);
+    }
   };
 
   const handleUpdateCity = async () => {
@@ -190,18 +226,33 @@ export default function AdminPanel() {
   ========================== */
 
   const handleAddLocation = async () => {
-    await fetch("http://localhost:9000/api/admin/location", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location_name: locationName,
-        description: locationDescription,
-        city_id: locationCityId,
-        latitude,
-        longitude,
-      }),
-    });
-    showNotification("success", "Location Added");
+    if (!locationName.trim() || !locationCityId.trim()) {
+      showNotification("info", "Please provide Location Name and City ID");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/location`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          location_name: locationName,
+          description: locationDescription,
+          city_id: locationCityId,
+          latitude,
+          longitude,
+        }),
+      });
+      await parseApiResponse(res);
+      showNotification("success", "Location Added");
+      setLocationName("");
+      setLocationDescription("");
+      setLocationCityId("");
+      setLatitude("");
+      setLongitude("");
+    } catch (error) {
+      showNotification("error", (error as Error).message);
+    }
   };
 
   const handleUpdateLocation = async () => {
@@ -272,37 +323,53 @@ export default function AdminPanel() {
   ========================== */
 
   const handleAddImage = async () => {
+    setImageInlineStatus(null);
+
     if (!imageFile) {
       showNotification("info", "Please select an image");
+      setImageInlineStatus({
+        type: "info",
+        message: "Please select an image before uploading.",
+      });
       return;
     }
+    if (!imageLocationId.trim()) {
+      showNotification("info", "Please provide Location ID");
+      setImageInlineStatus({
+        type: "info",
+        message: "Please provide a valid Location ID.",
+      });
+      return;
+    }
+
+    setImageInlineStatus({ type: "info", message: "Uploading image..." });
 
     const formData = new FormData();
     formData.append("location_id", imageLocationId);
     formData.append("image", imageFile);
-    formData.append("image_description", imageDescription);
 
-    const res = await fetch("http://localhost:9000/api/admin/image", {
-      method: "POST",
-      // Note: When sending FormData, DO NOT set Content-Type header manually.
-      // The browser will automatically set it to multipart/form-data with the correct boundary.
-      body: formData,
-    });
+    try {
+      const res = await fetch(`${API_BASE}/admin/image`, {
+        method: "POST",
+        body: formData,
+      });
+      await parseApiResponse(res);
 
-    if (res.ok) {
       showNotification("success", "Image Added");
-      // Reset form
+      setImageInlineStatus({
+        type: "success",
+        message: "Image uploaded successfully.",
+      });
       setImageFile(null);
       setImageLocationId("");
-      setImageDescription("");
-      // Reset file input element visually
       const fileInput = document.getElementById(
         "imageFileInput",
       ) as HTMLInputElement;
       if (fileInput) fileInput.value = "";
-    } else {
-      const errorData = await res.json();
-      showNotification("error", "Error adding image: " + errorData.message);
+    } catch (error) {
+      const message = (error as Error).message;
+      showNotification("error", message);
+      setImageInlineStatus({ type: "error", message });
     }
   };
 
@@ -312,47 +379,53 @@ export default function AdminPanel() {
       return;
     }
 
-    if (!updateImageFile && !updateImageDescription) {
-      showNotification(
-        "info",
-        "Please provide a new image or description to update",
-      );
+    if (!updateImageFile) {
+      showNotification("info", "Please provide a new image file to update");
       return;
     }
 
     const formData = new FormData();
-    if (updateImageFile) formData.append("image", updateImageFile);
-    if (updateImageDescription)
-      formData.append("image_description", updateImageDescription);
+    formData.append("image", updateImageFile);
 
-    const res = await fetch(
-      `http://localhost:9000/api/admin/image/${updateImageId}`,
-      {
+    try {
+      setImageInlineStatus({ type: "info", message: "Updating image..." });
+      const res = await fetch(`${API_BASE}/admin/image/${updateImageId}`, {
         method: "PUT",
         body: formData,
-      },
-    );
+      });
+      await parseApiResponse(res);
 
-    if (res.ok) {
       showNotification("success", "Image Updated");
+      setImageInlineStatus({ type: "success", message: "Image updated." });
       setUpdateImageId("");
       setUpdateImageFile(null);
-      setUpdateImageDescription("");
       const fileInput = document.getElementById(
         "updateImageFileInput",
       ) as HTMLInputElement;
       if (fileInput) fileInput.value = "";
-    } else {
-      const errorData = await res.json();
-      showNotification("error", "Error updating image: " + errorData.message);
+    } catch (error) {
+      const message = (error as Error).message;
+      showNotification("error", message);
+      setImageInlineStatus({ type: "error", message });
     }
   };
 
   const handleDeleteImage = async () => {
-    await fetch(`http://localhost:9000/api/admin/image/${deleteImageId}`, {
-      method: "DELETE",
-    });
-    showNotification("success", "Image Deleted");
+    if (!deleteImageId.trim()) {
+      showNotification("info", "Please provide Image ID");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/image/${deleteImageId}`, {
+        method: "DELETE",
+      });
+      await parseApiResponse(res);
+      showNotification("success", "Image Deleted");
+      setDeleteImageId("");
+    } catch (error) {
+      showNotification("error", (error as Error).message);
+    }
   };
 
   const handleGetImage = async () => {
@@ -366,21 +439,33 @@ export default function AdminPanel() {
       return;
     }
 
-    const res = await fetch(url);
-    const data = await res.json();
-    if (Array.isArray(data)) {
-      setFetchedImages(data);
-      setFetchedImage(null);
-    } else {
-      setFetchedImage(data);
-      setFetchedImages(null);
+    try {
+      const res = await fetch(url);
+      const data = await parseApiResponse(res);
+      if (Array.isArray(data)) {
+        setFetchedImages(data);
+        setFetchedImage(null);
+      } else {
+        setFetchedImage(data);
+        setFetchedImages(null);
+      }
+    } catch (error) {
+      showNotification("error", (error as Error).message);
     }
   };
 
   const handleGetAllImages = async () => {
-    const res = await fetch("http://localhost:9000/api/admin/images");
-    const data = await res.json();
-    console.log(data);
+    try {
+      const res = await fetch(`${API_BASE}/admin/images`);
+      const data = await parseApiResponse(res);
+      console.log(data);
+      showNotification(
+        "success",
+        `Fetched ${Array.isArray(data) ? data.length : 0} images`,
+      );
+    } catch (error) {
+      showNotification("error", (error as Error).message);
+    }
   };
 
   const handleGetReports = async () => {
@@ -658,16 +743,24 @@ export default function AdminPanel() {
             }}
             className="w-full p-2 mb-3 rounded bg-gray-800 border border-gray-700 text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-600 file:text-white hover:file:bg-green-700 cursor-pointer"
           />
-          <Input
-            placeholder="Image Description"
-            value={imageDescription}
-            onChange={setImageDescription}
-          />
           <Button
             text="Add Image"
             onClick={handleAddImage}
             color="bg-green-600"
           />
+          {imageInlineStatus && (
+            <p
+              className={`mt-2 text-sm ${
+                imageInlineStatus.type === "success"
+                  ? "text-green-300"
+                  : imageInlineStatus.type === "error"
+                    ? "text-red-300"
+                    : "text-sky-300"
+              }`}
+            >
+              {imageInlineStatus.message}
+            </p>
+          )}
         </Container>
 
         {/* UPDATE IMAGE */}
@@ -687,11 +780,6 @@ export default function AdminPanel() {
               }
             }}
             className="w-full p-2 mb-3 rounded bg-gray-800 border border-gray-700 text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-600 file:text-white hover:file:bg-yellow-700 cursor-pointer"
-          />
-          <Input
-            placeholder="New Description"
-            value={updateImageDescription}
-            onChange={setUpdateImageDescription}
           />
           <Button
             text="Update Image"
@@ -741,7 +829,6 @@ export default function AdminPanel() {
               <p>ID: {fetchedImage.image_id}</p>
               <p>Location ID: {fetchedImage.location_id}</p>
               <p className="truncate">URL: {fetchedImage.image_url}</p>
-              <p>Description: {fetchedImage.image_description}</p>
             </div>
           )}
           {fetchedImages && fetchedImages.length > 0 && (
@@ -887,6 +974,7 @@ function Button({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`w-full p-2 rounded text-white ${color} hover:opacity-80`}
     >

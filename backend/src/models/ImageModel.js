@@ -17,10 +17,6 @@ const ImageModel = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    image_description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
   },
   {
     timestamps: false,

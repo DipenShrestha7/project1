@@ -196,7 +196,9 @@ const AccountOverlay = ({
     } catch (error) {
       setStatusType("error");
       setStatusMessage(
-        error instanceof Error ? error.message : "Failed to upload profile photo.",
+        error instanceof Error
+          ? error.message
+          : "Failed to upload profile photo.",
       );
     } finally {
       setIsUploadingPhoto(false);
@@ -308,7 +310,7 @@ const AccountOverlay = ({
             <Stat label="Wishlist" value={accountStats.wishlistCount} />
             <Stat label="Visited" value={accountStats.visitedCount} />
             <Stat label="Reviews" value={accountStats.reviewCount} />
-            <Stat label="Chats" value={accountStats.chatSessionsCount} />
+            <Stat label="AI Chats" value={accountStats.chatSessionsCount} />
           </div>
 
           <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0b1220] p-4">
@@ -414,7 +416,7 @@ const AccountOverlay = ({
               <button
                 type="button"
                 onClick={onToggleTheme}
-                  className="rounded-lg border border-slate-200 dark:border-slate-600 px-3.5 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg border border-slate-200 dark:border-slate-600 px-3.5 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <span className="inline-flex items-center gap-2">
                   <Settings size={15} /> Theme: {darkMode ? "Dark" : "Light"}
@@ -424,7 +426,7 @@ const AccountOverlay = ({
               <button
                 type="button"
                 onClick={downloadMyData}
-                  className="rounded-lg border border-slate-200 dark:border-slate-600 px-3.5 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-lg border border-slate-200 dark:border-slate-600 px-3.5 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <span className="inline-flex items-center gap-2">
                   <Download size={15} /> Export My Data (.json)
@@ -484,7 +486,9 @@ const AccountOverlay = ({
 
           <section className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#0b1220] p-4">
             <div className="flex flex-col gap-3">
-              <h4 className="text-lg font-semibold">Community Feedback Tracker</h4>
+              <h4 className="text-lg font-semibold">
+                Community Feedback Tracker
+              </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[180px_minmax(220px,1fr)_auto_auto] gap-2 w-full">
                 <select
@@ -529,7 +533,9 @@ const AccountOverlay = ({
 
             <div className="mt-4 space-y-3">
               {isLoadingCommunityReports ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">Loading reports...</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Loading reports...
+                </p>
               ) : communityReports.length === 0 ? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   No reports found for the selected filters.
@@ -618,7 +624,6 @@ const AccountOverlay = ({
               </button>
             </div>
           </section>
-
         </main>
       </div>
     </div>

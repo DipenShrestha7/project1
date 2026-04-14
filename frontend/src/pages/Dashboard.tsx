@@ -96,7 +96,6 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
             id: item.image_id,
             location_id: item.location_id,
             image_url: item.image_url,
-            image_description: item.image_description,
           };
         });
         setImages(formatted);
@@ -273,9 +272,6 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
   >(null);
   const [confirmDeleteReviewLocationId, setConfirmDeleteReviewLocationId] =
     useState<number | null>(null);
-  const [flippedImageIds, setFlippedImageIds] = useState<Set<number>>(
-    new Set(),
-  );
   const [searchCity, setSearchCity] = useState("");
   const filteredCities = Cities?.filter((city) => {
     return city.name?.toLowerCase().includes(searchCity.toLowerCase());
@@ -867,8 +863,6 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
             travelHistoryLocationIds={travelHistoryLocationIds}
             toggleLocationCollection={toggleLocationCollection}
             filteredImages={filteredImages}
-            flippedImageIds={flippedImageIds}
-            setFlippedImageIds={setFlippedImageIds}
             setSelectedLocation={setSelectedLocation}
             locationReviews={locationReviews}
           />
@@ -928,7 +922,7 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
 
       {/* Logout Modal */}
       {showLogoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200">
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/50 text-red-600 rounded-full flex items-center justify-center mb-6">
               <LogOut size={32} />

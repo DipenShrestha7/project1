@@ -76,7 +76,9 @@ const HomeHero = ({ darkMode, onOpenLogin }: HomeHeroProps) => {
             <a
               href="/ghumphir/dashboard"
               onClick={() => localStorage.removeItem("token")}
-              className="rounded-xl border border-black px-6 py-3 text-black hover:border-sky-300 hover:text-sky-200 transition"
+              className={`rounded-xl border px-6 py-3 hover:border-sky-300 hover:text-sky-200 transition ${
+                darkMode ? "text-white border-white" : "text-black border-black"
+              }`}
             >
               Explore As Guest
             </a>

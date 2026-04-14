@@ -5,9 +5,14 @@ import {
   Check,
   Heart,
   History,
+  Maximize2,
   MoreVertical,
+  RotateCcw,
   Star,
   UserCircle2,
+  X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import type { Locations, Images, Review } from "./types";
 
@@ -26,8 +31,6 @@ interface LocationDetailsViewProps {
     collection: "wishlist" | "travelHistory",
   ) => void;
   filteredImages: Images[];
-  flippedImageIds: Set<number>;
-  setFlippedImageIds: (s: Set<number>) => void;
   setSelectedLocation: (id: number | null) => void;
   locationReviews: Review[];
 }
@@ -44,14 +47,48 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
   travelHistoryLocationIds,
   toggleLocationCollection,
   filteredImages,
-  flippedImageIds,
-  setFlippedImageIds,
   setSelectedLocation,
   locationReviews,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [isWishlistDropdownOpen, setIsWishlistDropdownOpen] =
     React.useState(false);
+  const [expandedImageUrl, setExpandedImageUrl] = React.useState<string | null>(
+    null,
+  );
+  const [zoomLevel, setZoomLevel] = React.useState(1);
+
+  React.useEffect(() => {
+    if (!expandedImageUrl) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setExpandedImageUrl(null);
+        setZoomLevel(1);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [expandedImageUrl]);
+
+  const openExpandedImage = (imageUrl: string) => {
+    setExpandedImageUrl(imageUrl);
+    setZoomLevel(1);
+  };
+
+  const closeExpandedImage = () => {
+    setExpandedImageUrl(null);
+    setZoomLevel(1);
+  };
+
+  const increaseZoom = () => {
+    setZoomLevel((prev) => Math.min(prev + 0.25, 4));
+  };
+
+  const decreaseZoom = () => {
+    setZoomLevel((prev) => Math.max(prev - 0.25, 1));
+  };
 
   return (
     <div
@@ -263,67 +300,94 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
         {filteredImages.map((img) => (
           <div
             key={img.id}
-            className="h-64 cursor-pointer perspective"
-            onClick={() => {
-              const newFlipped = new Set(flippedImageIds);
-              if (newFlipped.has(img.id)) {
-                newFlipped.delete(img.id);
-              } else {
-                newFlipped.add(img.id);
-              }
-              setFlippedImageIds(newFlipped);
-            }}
+            className="relative h-64 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition"
           >
-            <div
-              className="relative w-full h-full transition-transform duration-500 ease-in-out"
-              style={{
-                transformStyle: "preserve-3d",
-                transform: flippedImageIds.has(img.id)
-                  ? "rotateY(180deg)"
-                  : "rotateY(0deg)",
-              }}
+            <button
+              type="button"
+              onClick={() => openExpandedImage(img.image_url)}
+              aria-label="Expand image"
+              className="absolute right-2 top-2 z-10 inline-flex items-center justify-center rounded-lg bg-black/55 p-2 text-white shadow-md backdrop-blur-sm transition hover:bg-black/70"
             >
-              {/* Front - Image */}
-              <div
-                className="absolute w-full h-full bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition"
-                style={{
-                  backfaceVisibility: "hidden",
-                }}
-              >
-                <img
-                  src={img.image_url}
-                  className="w-full h-full object-cover"
-                  alt={img.image_description}
-                />
-                <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-3 text-white text-xs">
-                  Click to see description
-                </div>
-              </div>
-
-              {/* Back - Description */}
-              <div
-                className="absolute w-full h-full bg-sky-600 dark:bg-sky-700 rounded-2xl shadow-md overflow-hidden p-6 flex flex-col justify-between"
-                style={{
-                  backfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
-                }}
-              >
-                <div>
-                  <h3 className="text-white font-semibold text-lg mb-3">
-                    Description
-                  </h3>
-                  <p className="text-white/90 text-sm leading-relaxed">
-                    {img.image_description || "No description available"}
-                  </p>
-                </div>
-                <div className="text-white/70 text-xs text-center">
-                  Click to go back
-                </div>
-              </div>
-            </div>
+              <Maximize2 size={16} />
+            </button>
+            <img
+              src={img.image_url}
+              className="w-full h-full object-cover"
+              alt="Location image"
+            />
           </div>
         ))}
       </div>
+
+      {expandedImageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs"
+          onClick={closeExpandedImage}
+        >
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                decreaseZoom();
+              }}
+              className="inline-flex items-center justify-center rounded-lg bg-white/15 p-2 text-white transition hover:bg-white/25"
+              aria-label="Zoom out"
+            >
+              <ZoomOut size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                increaseZoom();
+              }}
+              className="inline-flex items-center justify-center rounded-lg bg-white/15 p-2 text-white transition hover:bg-white/25"
+              aria-label="Zoom in"
+            >
+              <ZoomIn size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setZoomLevel(1);
+              }}
+              className="inline-flex items-center justify-center rounded-lg bg-white/15 p-2 text-white transition hover:bg-white/25"
+              aria-label="Reset zoom"
+            >
+              <RotateCcw size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeExpandedImage();
+              }}
+              className="inline-flex items-center justify-center rounded-lg bg-white/15 p-2 text-white transition hover:bg-white/25"
+              aria-label="Close image viewer"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div
+            className="flex h-full w-full items-center justify-center p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={expandedImageUrl}
+              alt="Expanded location view"
+              className="max-h-full max-w-full object-contain transition-transform duration-150 ease-out"
+              style={{ transform: `scale(${zoomLevel})` }}
+            />
+          </div>
+
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-md bg-black/50 px-3 py-1 text-xs text-white">
+            Zoom: {Math.round(zoomLevel * 100)}% (Press Esc to close)
+          </div>
+        </div>
+      )}
 
       {/* Public Reviews Section */}
       <div className="mt-12 mb-8">
