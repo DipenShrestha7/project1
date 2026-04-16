@@ -9,9 +9,40 @@ import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
 import path from "path";
 import fs from "fs";
+import { pipeline } from "stream/promises";
 import sequelize from "../config/db.js";
 
 function authenticateUsersRoute(fastify) {
+  const resolveLocalUploadPath = (imagePathOrUrl) => {
+    if (!imagePathOrUrl || typeof imagePathOrUrl !== "string") return null;
+
+    let normalized = imagePathOrUrl;
+    try {
+      if (/^https?:\/\//i.test(imagePathOrUrl)) {
+        normalized = new URL(imagePathOrUrl).pathname;
+      }
+    } catch {
+      return null;
+    }
+
+    if (!normalized.startsWith("/uploads/")) return null;
+    const relative = normalized.replace(/^\/uploads\//, "");
+    return path.join(process.cwd(), "uploads", relative);
+  };
+
+  const removeLocalUploadIfExists = async (imagePathOrUrl) => {
+    const filePath = resolveLocalUploadPath(imagePathOrUrl);
+    if (!filePath) return;
+
+    try {
+      await fs.promises.unlink(filePath);
+    } catch (err) {
+      if (err.code !== "ENOENT") {
+        fastify.log.warn({ err, filePath }, "Failed to delete old image file");
+      }
+    }
+  };
+
   const getUserIdFromAuthHeader = (authHeader) => {
     if (!authHeader) return null;
     const token = authHeader.split(" ")[1];
@@ -139,17 +170,38 @@ function authenticateUsersRoute(fastify) {
       if (!userId) {
         return reply.code(401).send({ message: "No token provided" });
       }
+      const user = await UsersModel.findOne({ where: { user_id: userId } });
+      if (!user) {
+        return reply.code(404).send({ message: "User not found" });
+      }
 
-      const data = await req.file(); // get uploaded file
-      const uploadPath = path.join(process.cwd(), "uploads", data.filename);
-      const writeStream = fs.createWriteStream(uploadPath);
-      await data.file.pipe(writeStream);
+      const data = await req.file();
+      if (!data) {
+        return reply.code(400).send({ message: "No image file uploaded" });
+      }
 
-      // Save path in DB
+      const userFolder = path.join(
+        process.cwd(),
+        "uploads",
+        "users",
+        `user_${userId}`,
+      );
+      await fs.promises.mkdir(userFolder, { recursive: true });
+
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const ext = path.extname(data.filename || "") || ".jpg";
+      const filename = `${uniqueSuffix}${ext}`;
+      const uploadPath = path.join(userFolder, filename);
+
+      await pipeline(data.file, fs.createWriteStream(uploadPath));
+
+      const profileImagePath = `/uploads/users/user_${userId}/${filename}`;
       await UsersModel.update(
-        { profile_image: `/uploads/${data.filename}` },
+        { profile_image: profileImagePath },
         { where: { user_id: userId } },
       );
+
+      await removeLocalUploadIfExists(user.profile_image);
 
       return {
         message: "Image added successfully",
@@ -190,6 +242,10 @@ function authenticateUsersRoute(fastify) {
         { where: { user_id: userId } },
       );
 
+      if (user.profile_image !== profile_image) {
+        await removeLocalUploadIfExists(user.profile_image);
+      }
+
       return {
         message: "Profile image updated successfully",
         profile_image,
@@ -208,18 +264,40 @@ function authenticateUsersRoute(fastify) {
         return reply.code(401).send({ message: "No token provided" });
       }
 
-      const data = await req.file(); // get uploaded file
-      const uploadPath = path.join(process.cwd(), "uploads", data.filename);
-      const writeStream = fs.createWriteStream(uploadPath);
-      await data.file.pipe(writeStream);
+      const user = await UsersModel.findOne({ where: { user_id: userId } });
+      if (!user) {
+        return reply.code(404).send({ message: "User not found" });
+      }
 
-      const profileImagePath = `/uploads/${data.filename}`;
+      const data = await req.file();
+      if (!data) {
+        return reply.code(400).send({ message: "No image file uploaded" });
+      }
+
+      const userFolder = path.join(
+        process.cwd(),
+        "uploads",
+        "users",
+        `user_${userId}`,
+      );
+      await fs.promises.mkdir(userFolder, { recursive: true });
+
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const ext = path.extname(data.filename || "") || ".jpg";
+      const filename = `${uniqueSuffix}${ext}`;
+      const uploadPath = path.join(userFolder, filename);
+
+      await pipeline(data.file, fs.createWriteStream(uploadPath));
+
+      const profileImagePath = `/uploads/users/user_${userId}/${filename}`;
 
       // Update user profile image
       await UsersModel.update(
         { profile_image: profileImagePath },
         { where: { user_id: userId } },
       );
+
+      await removeLocalUploadIfExists(user.profile_image);
 
       return {
         message: "Profile image updated successfully",
@@ -253,9 +331,7 @@ function authenticateUsersRoute(fastify) {
           : user.email;
 
       if (!resolvedName || !resolvedEmail) {
-        return reply
-          .code(400)
-          .send({ message: "Name and email are required" });
+        return reply.code(400).send({ message: "Name and email are required" });
       }
 
       if (resolvedEmail !== user.email) {
@@ -391,7 +467,14 @@ function authenticateUsersRoute(fastify) {
 
       const reports = await UserReportsModel.findAll({
         where,
-        attributes: ["report_id", "user_id", "type", "message", "status", "created_at"],
+        attributes: [
+          "report_id",
+          "user_id",
+          "type",
+          "message",
+          "status",
+          "created_at",
+        ],
         order: [["created_at", "DESC"]],
         limit: 100,
       });
@@ -408,7 +491,9 @@ function authenticateUsersRoute(fastify) {
       return response;
     } catch (error) {
       console.error(error);
-      return reply.code(500).send({ message: "Failed to fetch public reports" });
+      return reply
+        .code(500)
+        .send({ message: "Failed to fetch public reports" });
     }
   });
 
@@ -448,7 +533,9 @@ function authenticateUsersRoute(fastify) {
       };
     } catch (error) {
       console.error(error);
-      return reply.code(500).send({ message: "Failed to update report status" });
+      return reply
+        .code(500)
+        .send({ message: "Failed to update report status" });
     }
   });
 
@@ -475,10 +562,16 @@ function authenticateUsersRoute(fastify) {
         });
       }
 
-      await ChatSessionModel.destroy({ where: { user_id: userId }, transaction });
+      await ChatSessionModel.destroy({
+        where: { user_id: userId },
+        transaction,
+      });
       await WishlistModel.destroy({ where: { user_id: userId }, transaction });
       await HistoryModel.destroy({ where: { user_id: userId }, transaction });
-      await UserReportsModel.destroy({ where: { user_id: userId }, transaction });
+      await UserReportsModel.destroy({
+        where: { user_id: userId },
+        transaction,
+      });
 
       const removedUsers = await UsersModel.destroy({
         where: { user_id: userId },

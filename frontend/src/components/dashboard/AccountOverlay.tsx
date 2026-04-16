@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Camera,
   Download,
@@ -123,11 +123,6 @@ const AccountOverlay = ({
     };
   }, [feedbackStatusMessage]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    void fetchCommunityReports();
-  }, [isOpen]);
-
   const exportPayload = useMemo(
     () => ({
       exported_at: new Date().toISOString(),
@@ -138,8 +133,6 @@ const AccountOverlay = ({
     }),
     [accountStats, travelHistoryItems, user, wishlistItems],
   );
-
-  if (!isOpen) return null;
 
   const downloadMyData = () => {
     const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
@@ -232,7 +225,7 @@ const AccountOverlay = ({
     }
   };
 
-  const fetchCommunityReports = async () => {
+  const fetchCommunityReports = useCallback(async () => {
     setIsLoadingCommunityReports(true);
     try {
       const query = new URLSearchParams();
@@ -273,7 +266,14 @@ const AccountOverlay = ({
     } finally {
       setIsLoadingCommunityReports(false);
     }
-  };
+  }, [communityMineOnly, communitySearch, communityTypeFilter]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    void fetchCommunityReports();
+  }, [fetchCommunityReports, isOpen]);
+
+  if (!isOpen) return null;
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true);

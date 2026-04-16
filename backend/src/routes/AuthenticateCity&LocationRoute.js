@@ -6,6 +6,36 @@ import fs from "fs";
 import { pipeline } from "stream/promises";
 const normalize = (str) => str.trim().toLowerCase().replace(/\s+/g, "");
 
+const resolveLocalUploadPath = (imagePathOrUrl) => {
+  if (!imagePathOrUrl || typeof imagePathOrUrl !== "string") return null;
+
+  let normalized = imagePathOrUrl;
+  try {
+    if (/^https?:\/\//i.test(imagePathOrUrl)) {
+      normalized = new URL(imagePathOrUrl).pathname;
+    }
+  } catch {
+    return null;
+  }
+
+  if (!normalized.startsWith("/uploads/")) return null;
+  const relative = normalized.replace(/^\/uploads\//, "");
+  return path.join(process.cwd(), "uploads", relative);
+};
+
+const removeLocalUploadIfExists = async (imagePathOrUrl) => {
+  const filePath = resolveLocalUploadPath(imagePathOrUrl);
+  if (!filePath) return;
+
+  try {
+    await fs.promises.unlink(filePath);
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      console.warn("Failed to delete old image file:", filePath, err.message);
+    }
+  }
+};
+
 const getLocationUploadTarget = async (location_id) => {
   const location = await LocationsModel.findOne({ where: { location_id } });
   if (!location) return null;
@@ -413,6 +443,11 @@ function authenticateCityLocationRoutes(fastify) {
       const updated_image = await ImageModel.update(updateData, {
         where: { image_id },
       });
+
+      if (existingImage.image_url !== updateData.image_url) {
+        await removeLocalUploadIfExists(existingImage.image_url);
+      }
+
       return {
         message: "Image Updated Successfully",
         updated_image,
@@ -427,9 +462,17 @@ function authenticateCityLocationRoutes(fastify) {
     const { image_id } = request.params;
 
     try {
-      // Find the image first to optionally delete the file from the filesystem cleanly
-      // We will skip actual fs deletion for now unless required, but we delete the DB record.
+      const image = await ImageModel.findOne({ where: { image_id } });
+      if (!image) {
+        return reply.code(404).send({ message: "Image not found" });
+      }
+
       const removed_image = await ImageModel.destroy({ where: { image_id } });
+
+      if (removed_image) {
+        await removeLocalUploadIfExists(image.image_url);
+      }
+
       return { removed_image };
     } catch (err) {
       console.error(err);

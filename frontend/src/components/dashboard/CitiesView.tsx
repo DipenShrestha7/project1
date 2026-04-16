@@ -1,5 +1,5 @@
 import React from "react";
-import { Heart, History, MapPin, MoreVertical } from "lucide-react";
+import { Heart, History, MapPin, MoreVertical, Search } from "lucide-react";
 import type { Cities, Locations } from "./types";
 
 interface CitiesViewProps {
@@ -33,6 +33,7 @@ const CitiesView: React.FC<CitiesViewProps> = ({
   );
   const [activeWishlistDropdownId, setActiveWishlistDropdownId] =
     React.useState<number | null>(null);
+  const [locationSearchInput, setLocationSearchInput] = React.useState("");
   const locationCount = filteredLocations.length;
   const visitedCount = filteredLocations.filter((loc) =>
     travelHistoryLocationIds.has(loc.id),
@@ -40,6 +41,14 @@ const CitiesView: React.FC<CitiesViewProps> = ({
   const wishlistCount = filteredLocations.filter((loc) =>
     wishlistLocationIds.has(loc.id),
   ).length;
+  const normalizedSearch = locationSearchInput.trim().toLowerCase();
+  const displayedLocations = normalizedSearch
+    ? filteredLocations.filter((loc) => {
+        const searchableText =
+          `${loc.name} ${loc.description ?? ""}`.toLowerCase();
+        return searchableText.includes(normalizedSearch);
+      })
+    : filteredLocations;
 
   return (
     <div
@@ -136,11 +145,28 @@ const CitiesView: React.FC<CitiesViewProps> = ({
         </div>
       </section>
 
-      <h3 className="text-2xl font-semibold text-sky-900 dark:text-sky-400 mb-4">
-        Locations
-      </h3>
+      <div className="mb-4 grid gap-3 md:grid-cols-[auto_minmax(22rem,36rem)] md:items-center md:justify-start md:gap-4">
+        <h3 className="text-2xl font-semibold text-sky-900 dark:text-sky-400">
+          Locations
+        </h3>
+        <div className="w-full">
+          <div className="relative flex-1">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="text"
+              value={locationSearchInput}
+              onChange={(event) => setLocationSearchInput(event.target.value)}
+              placeholder="Search locations"
+              className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:border-slate-600 dark:bg-slate-900/45 dark:text-slate-100 dark:focus:border-sky-300 dark:focus:ring-sky-500/25"
+            />
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {filteredLocations.map((loc) => (
+        {displayedLocations.map((loc) => (
           <div
             key={loc.id}
             onClick={() => setSelectedLocation(loc.id)}
@@ -313,6 +339,12 @@ const CitiesView: React.FC<CitiesViewProps> = ({
           </div>
         ))}
       </div>
+
+      {displayedLocations.length === 0 && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600 dark:border-white/10 dark:bg-slate-900/35 dark:text-slate-300">
+          No locations matched your search.
+        </div>
+      )}
     </div>
   );
 };

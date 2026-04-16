@@ -3,6 +3,8 @@ import {
   ArrowLeft,
   Camera,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Heart,
   History,
   Maximize2,
@@ -18,6 +20,7 @@ import type { Locations, Images, Review } from "./types";
 
 interface LocationDetailsViewProps {
   currentLocation?: Locations;
+  cityLocations: Locations[];
   parsedLatitude: number;
   parsedLongitude: number;
   hasValidCoordinates: boolean;
@@ -37,6 +40,7 @@ interface LocationDetailsViewProps {
 
 const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
   currentLocation,
+  cityLocations,
   parsedLatitude,
   parsedLongitude,
   hasValidCoordinates,
@@ -90,6 +94,20 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
     setZoomLevel((prev) => Math.max(prev - 0.25, 1));
   };
 
+  const currentLocationIndex = currentLocation
+    ? cityLocations.findIndex((location) => location.id === currentLocation.id)
+    : -1;
+
+  const goToAdjacentLocation = (direction: "next" | "previous") => {
+    if (cityLocations.length === 0 || currentLocationIndex === -1) return;
+
+    const offset = direction === "next" ? 1 : -1;
+    const nextIndex =
+      (currentLocationIndex + offset + cityLocations.length) %
+      cityLocations.length;
+    setSelectedLocation(cityLocations[nextIndex].id);
+  };
+
   return (
     <div
       onClick={() => {
@@ -100,17 +118,61 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
       <section className="mb-8 rounded-3xl border border-slate-200 bg-linear-to-br from-slate-100 via-slate-50 to-sky-100 p-5 sm:p-6 shadow-lg shadow-slate-300/40 dark:border-white/10 dark:from-slate-900/60 dark:via-slate-800/45 dark:to-sky-950/35 dark:shadow-black/10">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
           <div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSelectedLocation(null)}
-                aria-label="Back"
-                className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-3 py-2 text-white shadow-md transition hover:bg-sky-400"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <h2 className="text-3xl font-semibold leading-tight text-sky-700 dark:text-sky-300 sm:text-4xl">
-                {currentLocation?.name}
-              </h2>
+            <div className="flex flex-col gap-4">
+              <div>
+                <button
+                  onClick={() => setSelectedLocation(null)}
+                  aria-label="Back to locations"
+                  className="inline-flex items-center gap-2 rounded-xl border border-sky-300 bg-white/95 px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-400 hover:bg-sky-50 dark:border-sky-300/30 dark:bg-slate-900/40 dark:text-sky-200 dark:hover:bg-sky-500/10"
+                >
+                  <ArrowLeft size={18} />
+                  Back to Locations
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <h2 className="text-3xl font-semibold leading-tight text-sky-700 dark:text-sky-300 sm:text-4xl">
+                  {currentLocation?.name}
+                </h2>
+              </div>
+
+              <div className="w-full max-w-xl rounded-2xl border border-slate-200/70 bg-white/75 p-2.5 shadow-md shadow-slate-200/40 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/35 dark:shadow-black/10">
+                <div className="grid grid-cols-3 items-stretch gap-2 sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() => goToAdjacentLocation("previous")}
+                    aria-label="Go to previous location"
+                    className="inline-flex h-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-sky-300 bg-white px-2.5 py-2 text-xs font-semibold text-sky-700 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-400 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-300/30 dark:bg-slate-900/30 dark:text-sky-200 dark:hover:bg-sky-500/10 sm:px-3 sm:text-sm"
+                    disabled={
+                      cityLocations.length === 0 || currentLocationIndex === -1
+                    }
+                  >
+                    <ChevronLeft size={16} />
+                    <span className="sm:hidden">Prev</span>
+                    <span className="hidden sm:inline">Previous</span>
+                  </button>
+
+                  <span className="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-slate-200 bg-white px-2 py-2 text-center text-xs font-semibold tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-300 sm:text-sm">
+                    {currentLocationIndex >= 0
+                      ? `${currentLocationIndex + 1} / ${cityLocations.length}`
+                      : `0 / ${cityLocations.length}`}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => goToAdjacentLocation("next")}
+                    aria-label="Go to next location"
+                    className="inline-flex h-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-sky-300 bg-sky-600 px-2.5 py-2 text-xs font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-300/30 sm:px-3 sm:text-sm"
+                    disabled={
+                      cityLocations.length === 0 || currentLocationIndex === -1
+                    }
+                  >
+                    <span className="sm:hidden">Next</span>
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
             </div>
 
             <p className="mt-4 max-w-3xl text-justify text-sm leading-8 text-slate-700 dark:text-slate-200/95 sm:text-base">

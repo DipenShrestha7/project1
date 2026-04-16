@@ -853,6 +853,7 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
         {activeSection === "cities" && selectedLocation && (
           <LocationDetailsView
             currentLocation={currentLocation}
+            cityLocations={filteredLocations}
             parsedLatitude={parsedLatitude}
             parsedLongitude={parsedLongitude}
             hasValidCoordinates={hasValidCoordinates}
