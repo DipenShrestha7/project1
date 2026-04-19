@@ -270,6 +270,9 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
   const [deletingReviewLocationId, setDeletingReviewLocationId] = useState<
     number | null
   >(null);
+  const [deletingHistoryLocationId, setDeletingHistoryLocationId] = useState<
+    number | null
+  >(null);
   const [confirmDeleteReviewLocationId, setConfirmDeleteReviewLocationId] =
     useState<number | null>(null);
   const [searchCity, setSearchCity] = useState("");
@@ -284,6 +287,15 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
   );
   const filteredImages = Images.filter(
     (img) => img.location_id === selectedLocation,
+  );
+  const locationImageById = Images.reduce<Record<number, string>>(
+    (acc, img) => {
+      if (!acc[img.location_id]) {
+        acc[img.location_id] = img.image_url;
+      }
+      return acc;
+    },
+    {},
   );
 
   const currentCity = Cities?.find((c) => c.id === selectedCity);
@@ -658,6 +670,108 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
     }
   };
 
+  const removeCityFromWishlist = async (cityId: number) => {
+    if (!User?.id) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:9000/api/wishlist", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: User.id,
+          city_id: cityId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || "Failed to remove city from wishlist",
+        );
+      }
+
+      await loadWishlist(User.id);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const removeLocationFromWishlist = async (locationId: number) => {
+    if (!User?.id) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:9000/api/wishlist", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: User.id,
+          location_id: locationId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || "Failed to remove location from wishlist",
+        );
+      }
+
+      await loadWishlist(User.id);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const removeLocationFromTravelHistory = async (locationId: number) => {
+    if (!User?.id) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    setDeletingHistoryLocationId(locationId);
+    try {
+      const response = await fetch(
+        "http://localhost:9000/api/history/visited",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: User.id,
+            location_id: locationId,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || "Failed to remove from travel history",
+        );
+      }
+
+      await loadTravelHistory(User.id);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    } finally {
+      setDeletingHistoryLocationId(null);
+    }
+  };
+
   const handleSaveProfile = async (name: string, email: string) => {
     const response = await fetch(
       "http://localhost:9000/api/dashboard/profile",
@@ -814,6 +928,9 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
           <WishlistView
             wishlistCities={wishlistCities}
             wishlistLocations={wishlistLocations}
+            locationImageById={locationImageById}
+            onRemoveCity={removeCityFromWishlist}
+            onRemoveLocation={removeLocationFromWishlist}
             setActiveSection={setActiveSection}
             setSelectedCity={setSelectedCity}
             setSelectedLocation={setSelectedLocation}
@@ -843,6 +960,9 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
             deletingReviewLocationId={deletingReviewLocationId}
             confirmDeleteReviewLocationId={confirmDeleteReviewLocationId}
             setConfirmDeleteReviewLocationId={setConfirmDeleteReviewLocationId}
+            locationImageById={locationImageById}
+            deletingHistoryLocationId={deletingHistoryLocationId}
+            removeLocationFromTravelHistory={removeLocationFromTravelHistory}
             setActiveSection={setActiveSection}
             setSelectedCity={setSelectedCity}
             setSelectedLocation={setSelectedLocation}

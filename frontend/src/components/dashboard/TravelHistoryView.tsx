@@ -22,6 +22,9 @@ interface TravelHistoryViewProps {
   setConfirmDeleteReviewLocationId: React.Dispatch<
     React.SetStateAction<number | null>
   >;
+  locationImageById: Record<number, string>;
+  deletingHistoryLocationId: number | null;
+  removeLocationFromTravelHistory: (id: number) => Promise<void>;
   setActiveSection: (s: ActiveSection) => void;
   setSelectedCity: (id: number | null) => void;
   setSelectedLocation: (id: number | null) => void;
@@ -43,10 +46,15 @@ const TravelHistoryView: React.FC<TravelHistoryViewProps> = ({
   deletingReviewLocationId,
   confirmDeleteReviewLocationId,
   setConfirmDeleteReviewLocationId,
+  locationImageById,
+  deletingHistoryLocationId,
+  removeLocationFromTravelHistory,
   setActiveSection,
   setSelectedCity,
   setSelectedLocation,
 }) => {
+  const [confirmDeleteHistoryLocationId, setConfirmDeleteHistoryLocationId] =
+    React.useState<number | null>(null);
   const totalReviews = travelHistoryItems.filter(
     (item) => (item.review_text ?? "").trim().length > 0,
   ).length;
@@ -102,7 +110,7 @@ const TravelHistoryView: React.FC<TravelHistoryViewProps> = ({
                 <div className="absolute inset-y-0 left-0 w-1 bg-linear-to-b from-sky-400 via-cyan-400 to-emerald-400 opacity-80" />
                 <div className="pl-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <h3 className="text-lg font-semibold text-slate-900 dark:text-sky-200">
                         {loc.name}
                       </h3>
@@ -113,9 +121,18 @@ const TravelHistoryView: React.FC<TravelHistoryViewProps> = ({
                         </p>
                       )}
                     </div>
-                    <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">
-                      #{loc.id}
-                    </span>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">
+                        #{loc.id}
+                      </span>
+                      {locationImageById[loc.id] ? (
+                        <img
+                          src={locationImageById[loc.id]}
+                          alt={loc.name}
+                          className="h-16 w-24 rounded-lg border border-sky-100 object-cover shadow-sm dark:border-sky-500/25"
+                        />
+                      ) : null}
+                    </div>
                   </div>
 
                   <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -159,6 +176,22 @@ const TravelHistoryView: React.FC<TravelHistoryViewProps> = ({
                         : hasReview
                           ? "Update Review"
                           : "Write Review"}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={deletingHistoryLocationId === loc.id}
+                      onClick={() => setConfirmDeleteHistoryLocationId(loc.id)}
+                      className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+                        deletingHistoryLocationId === loc.id
+                          ? "bg-red-200 text-red-400 cursor-not-allowed dark:bg-red-900/30"
+                          : "bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50"
+                      }`}
+                    >
+                      <Trash2 size={15} />
+                      {deletingHistoryLocationId === loc.id
+                        ? "Removing..."
+                        : "Remove from History"}
                     </button>
                   </div>
 
@@ -312,6 +345,52 @@ const TravelHistoryView: React.FC<TravelHistoryViewProps> = ({
                 {deletingReviewLocationId === confirmDeleteReviewLocationId
                   ? "Deleting..."
                   : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteHistoryLocationId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 dark:bg-black/70">
+          <div className="mx-4 w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+            <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Remove This Visit?
+            </h3>
+            <p className="mb-6 text-slate-600 dark:text-slate-300">
+              This location will be removed from your travel history.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteHistoryLocationId(null)}
+                disabled={
+                  deletingHistoryLocationId === confirmDeleteHistoryLocationId
+                }
+                className="rounded-lg bg-slate-200 px-4 py-2 text-slate-900 transition hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await removeLocationFromTravelHistory(
+                      confirmDeleteHistoryLocationId,
+                    );
+                    setConfirmDeleteHistoryLocationId(null);
+                  } catch (error) {
+                    console.error(error);
+                  }
+                }}
+                disabled={
+                  deletingHistoryLocationId === confirmDeleteHistoryLocationId
+                }
+                className="rounded-lg bg-red-600 px-4 py-2 text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {deletingHistoryLocationId === confirmDeleteHistoryLocationId
+                  ? "Removing..."
+                  : "Remove"}
               </button>
             </div>
           </div>

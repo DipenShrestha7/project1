@@ -61,6 +61,7 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
     null,
   );
   const [zoomLevel, setZoomLevel] = React.useState(1);
+  const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
 
   React.useEffect(() => {
     if (!expandedImageUrl) return;
@@ -69,14 +70,34 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
       if (event.key === "Escape") {
         setExpandedImageUrl(null);
         setZoomLevel(1);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        const prevIndex =
+          currentImageIndex === 0
+            ? filteredImages.length - 1
+            : currentImageIndex - 1;
+        setCurrentImageIndex(prevIndex);
+        setExpandedImageUrl(filteredImages[prevIndex].image_url);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        const nextIndex =
+          currentImageIndex === filteredImages.length - 1
+            ? 0
+            : currentImageIndex + 1;
+        setCurrentImageIndex(nextIndex);
+        setExpandedImageUrl(filteredImages[nextIndex].image_url);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [expandedImageUrl]);
+  }, [expandedImageUrl, filteredImages, currentImageIndex]);
 
   const openExpandedImage = (imageUrl: string) => {
+    const imageIndex = filteredImages.findIndex(
+      (img) => img.image_url === imageUrl,
+    );
+    setCurrentImageIndex(imageIndex >= 0 ? imageIndex : 0);
     setExpandedImageUrl(imageUrl);
     setZoomLevel(1);
   };
@@ -433,6 +454,42 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
             </button>
           </div>
 
+          {/* Left Arrow Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              const prevIndex =
+                currentImageIndex === 0
+                  ? filteredImages.length - 1
+                  : currentImageIndex - 1;
+              setCurrentImageIndex(prevIndex);
+              setExpandedImageUrl(filteredImages[prevIndex].image_url);
+            }}
+            aria-label="Previous image"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 inline-flex items-center justify-center rounded-lg bg-white/15 p-3 text-white shadow-md backdrop-blur-sm transition hover:bg-white/25 h-14 w-14"
+          >
+            <ChevronLeft size={32} />
+          </button>
+
+          {/* Right Arrow Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              const nextIndex =
+                currentImageIndex === filteredImages.length - 1
+                  ? 0
+                  : currentImageIndex + 1;
+              setCurrentImageIndex(nextIndex);
+              setExpandedImageUrl(filteredImages[nextIndex].image_url);
+            }}
+            aria-label="Next image"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 inline-flex items-center justify-center rounded-lg bg-white/15 p-3 text-white shadow-md backdrop-blur-sm transition hover:bg-white/25 h-14 w-14"
+          >
+            <ChevronRight size={32} />
+          </button>
+
           <div
             className="flex h-full w-full items-center justify-center p-6"
             onClick={(e) => e.stopPropagation()}
@@ -446,7 +503,9 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
           </div>
 
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-md bg-black/50 px-3 py-1 text-xs text-white">
-            Zoom: {Math.round(zoomLevel * 100)}% (Press Esc to close)
+            {currentImageIndex + 1} / {filteredImages.length} • Zoom:{" "}
+            {Math.round(zoomLevel * 100)}% (Arrow keys to navigate, Esc to
+            close)
           </div>
         </div>
       )}
