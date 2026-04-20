@@ -209,6 +209,19 @@ function authenticateCityLocationRoutes(fastify) {
       return reply.code(500).send({ error: error.message });
     }
   });
+
+  fastify.get("/admin/location/city/:city_id", async (request, reply) => {
+    const { city_id } = request.params;
+
+    try {
+      const locations = await LocationsModel.findAll({ where: { city_id } });
+      return locations;
+    } catch (error) {
+      console.error(error);
+      return reply.code(500).send({ error: error.message });
+    }
+  });
+
   fastify.get("/admin/location/name/:location_name", async (request, reply) => {
     const { location_name } = request.params;
 

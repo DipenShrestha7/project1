@@ -65,7 +65,7 @@ function App() {
         path="/ghumphir/dashboard"
         element={<Dashboard darkMode={darkMode} onToggleTheme={toggleTheme} />}
       />
-      <Route path="/ghumphir/adminnimda" element={<Admin />} />
+      <Route path="/ghumphir/admin" element={<Admin />} />
       <Route path="*" element={<Navigate to="/ghumphir" replace />} />
     </Routes>
   );
