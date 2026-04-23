@@ -217,22 +217,22 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
     }
   };
 
+  const loadLocationReviews = async (locationId: number) => {
+    try {
+      const res = await fetch(
+        `http://localhost:9000/api/location/${locationId}/reviews`,
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setLocationReviews(data);
+    } catch (err) {
+      console.error("Failed to fetch reviews:", err);
+    }
+  };
+
   useEffect(() => {
     if (selectedLocation) {
-      const fetchReviews = async () => {
-        try {
-          const res = await fetch(
-            `http://localhost:9000/api/location/${selectedLocation}/reviews`,
-          );
-          if (res.ok) {
-            const data = await res.json();
-            setLocationReviews(data);
-          }
-        } catch (err) {
-          console.error("Failed to fetch reviews:", err);
-        }
-      };
-      fetchReviews();
+      void loadLocationReviews(selectedLocation);
     } else {
       setLocationReviews([]);
     }
@@ -536,6 +536,10 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
       setTravelHistoryItems((prev) =>
         prev.map((i) => (i.location_id === locationId ? updated : i)),
       );
+
+      if (selectedLocation === locationId) {
+        await loadLocationReviews(locationId);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -583,6 +587,11 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
         delete next[locationId];
         return next;
       });
+
+      if (selectedLocation === locationId) {
+        await loadLocationReviews(locationId);
+      }
+
       // Close the expanded review section after successful deletion
       toggleReviewSection(locationId);
     } catch (error) {
