@@ -124,7 +124,10 @@ const ProfileView = ({
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-1 py-3 sm:px-2 md:px-3">
+    <div
+      id="profile-view"
+      className="mx-auto w-full max-w-5xl px-1 py-3 sm:px-2 md:px-3"
+    >
       <section className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/50 p-6 shadow-md">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
           My Account

@@ -60,7 +60,7 @@ const TravelHistoryView: React.FC<TravelHistoryViewProps> = ({
   ).length;
 
   return (
-    <div className="space-y-6">
+    <div id="travel-history-view" className="space-y-6">
       <div className="relative overflow-hidden rounded-3xl border border-sky-100/80 bg-linear-to-br from-white via-sky-50/65 to-cyan-50/45 p-6 shadow-sm dark:border-sky-500/20 dark:from-slate-900 dark:via-slate-900 dark:to-sky-950/40">
         <div className="pointer-events-none absolute -right-14 -top-14 h-40 w-40 rounded-full bg-sky-200/45 blur-2xl dark:bg-sky-500/20" />
         <div className="relative">

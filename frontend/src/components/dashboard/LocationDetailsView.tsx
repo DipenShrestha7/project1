@@ -131,6 +131,7 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
 
   return (
     <div
+      id="location-details-view"
       onClick={() => {
         setIsDropdownOpen(false);
         setIsWishlistDropdownOpen(false);

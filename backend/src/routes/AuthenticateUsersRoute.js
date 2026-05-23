@@ -376,20 +376,32 @@ function authenticateUsersRoute(fastify) {
         return reply.code(401).send({ message: "No token provided" });
       }
 
-      const [wishlistCount, historyCount, reviewCount, chatSessionsCount] =
-        await Promise.all([
+      const [wishlistCount, historyRows, chatSessionsCount] = await Promise.all(
+        [
           WishlistModel.count({ where: { user_id: userId } }),
-          HistoryModel.count({ where: { user_id: userId } }),
-          HistoryModel.count({
-            where: {
-              user_id: userId,
-              review_text: {
-                [Op.ne]: null,
-              },
-            },
+          HistoryModel.findAll({
+            where: { user_id: userId },
+            order: [["travel_date", "DESC"]],
+            raw: true,
           }),
           ChatSessionModel.count({ where: { user_id: userId } }),
-        ]);
+        ],
+      );
+
+      const latestByLocationId = new Map();
+      for (const row of historyRows) {
+        if (!latestByLocationId.has(row.location_id)) {
+          latestByLocationId.set(row.location_id, row);
+        }
+      }
+
+      const latestHistoryItems = [...latestByLocationId.values()];
+      const historyCount = latestHistoryItems.length;
+      const reviewCount = latestHistoryItems.filter(
+        (item) =>
+          typeof item.review_text === "string" &&
+          item.review_text.trim().length > 0,
+      ).length;
 
       return {
         wishlistCount,

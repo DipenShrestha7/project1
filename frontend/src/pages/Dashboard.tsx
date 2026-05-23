@@ -1,20 +1,5 @@
-import { useState, useEffect, useRef } from "react";
 import { LogIn, PanelLeftClose, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type {
-  User,
-  WishlistItem,
-  City,
-  Cities,
-  Location,
-  Locations,
-  Image,
-  Images,
-  HistoryItem,
-  ActiveSection,
-  Review,
-  AccountStats,
-} from "../components/dashboard/types";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import CitiesView from "../components/dashboard/CitiesView";
 import ChatbotView from "../components/dashboard/ChatbotView.tsx";
@@ -22,6 +7,7 @@ import WishlistView from "../components/dashboard/WishlistView";
 import TravelHistoryView from "../components/dashboard/TravelHistoryView";
 import LocationDetailsView from "../components/dashboard/LocationDetailsView";
 import AccountOverlay from "../components/dashboard/AccountOverlay";
+import { useDashboardController } from "./dashboard/useDashboardController";
 
 type DashboardProps = {
   darkMode: boolean;
@@ -29,819 +15,200 @@ type DashboardProps = {
 };
 
 const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
-  const [User, setUser] = useState<User>();
-  const [Cities, setCities] = useState<Cities[]>([]);
-  const [Locations, setLocations] = useState<Locations[]>([]);
-  const [Images, setImages] = useState<Images[]>([]);
   const navigate = useNavigate();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<ActiveSection>("cities");
+  const {
+    user,
+    preview,
+    activeSection,
+    setActiveSection,
+    selectedCity,
+    setSelectedCity,
+    selectedLocation,
+    setSelectedLocation,
+    locationReviews,
+    showAuthModal,
+    setShowAuthModal,
+    showLogoutModal,
+    setShowLogoutModal,
+    isAccountOverlayOpen,
+    setIsAccountOverlayOpen,
+    isSidebarOpen,
+    isSidebarClosing,
+    openSidebar,
+    closeSidebar,
+    closeSidebarOnMobile,
+    wishlistCityIds,
+    wishlistLocationIds,
+    travelHistoryLocationIds,
+    wishlistItems,
+    travelHistoryItems,
+    accountStats,
+    expandedReviewLocationIds,
+    reviewTextDrafts,
+    setReviewTextDrafts,
+    ratingDrafts,
+    setRatingDrafts,
+    savingReviewLocationId,
+    saveReviewForLocation,
+    deleteReviewForLocation,
+    initiateDeleteReview,
+    deletingReviewLocationId,
+    confirmDeleteReviewLocationId,
+    setConfirmDeleteReviewLocationId,
+    locationImageById,
+    deletingHistoryLocationId,
+    removeLocationFromTravelHistory,
+    searchCity,
+    setSearchCity,
+    filteredCities,
+    filteredLocations,
+    wishlistCities,
+    wishlistLocations,
+    filteredImages,
+    currentCity,
+    currentLocation,
+    parsedLatitude,
+    parsedLongitude,
+    hasValidCoordinates,
+    googleMapsUrl,
+    mapEmbedUrl,
+    toggleLocationCollection,
+    toggleReviewSection,
+    toggleCityWishlist,
+    toggleLocationWishlist,
+    removeCityFromWishlist,
+    removeLocationFromWishlist,
+    handleSaveProfile,
+    handleDeleteAccount,
+    handleSubmitReport,
+    uploadProfileImage,
+    handleLogoutClick,
+  } = useDashboardController();
 
-  const getProfileImageSrc = (profileImage?: string | null) => {
-    if (!profileImage) return null;
-    if (/^https?:\/\//i.test(profileImage)) {
-      return profileImage;
-    }
-    return `http://localhost:9000${profileImage}`;
-  };
-
-  useEffect(() => {
-    const fetchCityData = async () => {
-      try {
-        const response = await fetch("http://localhost:9000/api/admin/cities");
-        const data: City[] = await response.json();
-        const formatted: Cities[] = data.map((item) => ({
-          id: item.city_id,
-          name: item.city_name,
-          description: item.description,
-        }));
-        setCities(formatted);
-      } catch (err) {
-        console.error(err);
+  const dashboardSidebarProps = {
+    onAuthRequired: () => setShowAuthModal(true),
+    User: user,
+    preview,
+    activeSection,
+    setActiveSection: (sec: typeof activeSection) => {
+      setActiveSection(sec);
+      if (sec !== "cities") {
+        closeSidebarOnMobile();
       }
-    };
-    fetchCityData();
-  }, []);
-
-  useEffect(() => {
-    const fetchLocationData = async () => {
-      try {
-        const response = await fetch(
-          "http://localhost:9000/api/admin/locations",
-        );
-        const data: Location[] = await response.json();
-        const formatted: Locations[] = data.map((item) => ({
-          id: item.location_id,
-          name: item.location_name,
-          description: item.description,
-          city_id: item.city_id,
-          latitude: item.latitude,
-          longitude: item.longitude,
-        }));
-        setLocations(formatted);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchLocationData();
-  }, []);
-
-  useEffect(() => {
-    const fetchImageData = async () => {
-      try {
-        const response = await fetch("http://localhost:9000/api/admin/images");
-        const data: Image[] = await response.json();
-        const formatted: Images[] = data.map((item) => {
-          return {
-            id: item.image_id,
-            location_id: item.location_id,
-            image_url: item.image_url,
-          };
-        });
-        setImages(formatted);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchImageData();
-  }, []);
-
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        return;
-      }
-      try {
-        const response = await fetch("http://localhost:9000/api/dashboard", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) {
-          return;
-        }
-        const data = await response.json();
-        setUser(data);
-        setPreview(getProfileImageSrc(data.profile_image));
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchDashboard();
-  }, [navigate]);
-
-  const uploadProfileImage = async (file: File) => {
-    if (!file) return;
-
-    setPreview(URL.createObjectURL(file));
-    const formData = new FormData();
-    formData.append("photo", file);
-
-    try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(
-        `http://localhost:9000/api/dashboard/upload`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        },
-      );
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to upload image");
-      }
-
-      await response.json();
-    } catch (err) {
-      console.error(err);
-      throw err;
-    }
-  };
-
-  const [selectedCity, setSelectedCity] = useState<number | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
-  const [locationReviews, setLocationReviews] = useState<Review[]>([]);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isAccountOverlayOpen, setIsAccountOverlayOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    return window.innerWidth >= 768;
-  });
-  const [isSidebarClosing, setIsSidebarClosing] = useState(false);
-  const sidebarCloseTimeoutRef = useRef<number | null>(null);
-
-  const openSidebar = () => {
-    if (sidebarCloseTimeoutRef.current) {
-      window.clearTimeout(sidebarCloseTimeoutRef.current);
-      sidebarCloseTimeoutRef.current = null;
-    }
-    setIsSidebarClosing(false);
-    setIsSidebarOpen(true);
-  };
-
-  const closeSidebar = () => {
-    if (window.innerWidth >= 768) {
-      setIsSidebarClosing(true);
-      setIsSidebarOpen(false);
-
-      if (sidebarCloseTimeoutRef.current) {
-        window.clearTimeout(sidebarCloseTimeoutRef.current);
-      }
-
-      sidebarCloseTimeoutRef.current = window.setTimeout(() => {
-        setIsSidebarClosing(false);
-      }, 300);
-
-      return;
-    }
-
-    setIsSidebarOpen(false);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (sidebarCloseTimeoutRef.current) {
-        window.clearTimeout(sidebarCloseTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const closeSidebarOnMobile = () => {
-    if (window.innerWidth < 768) {
-      closeSidebar();
-    }
-  };
-
-  const loadLocationReviews = async (locationId: number) => {
-    try {
-      const res = await fetch(
-        `http://localhost:9000/api/location/${locationId}/reviews`,
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      setLocationReviews(data);
-    } catch (err) {
-      console.error("Failed to fetch reviews:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedLocation) {
-      void loadLocationReviews(selectedLocation);
-    } else {
-      setLocationReviews([]);
-    }
-  }, [selectedLocation]);
-
-  const [wishlistCityIds, setWishlistCityIds] = useState<Set<number>>(
-    new Set(),
-  );
-  const [wishlistLocationIds, setWishlistLocationIds] = useState<Set<number>>(
-    new Set(),
-  );
-  const [travelHistoryLocationIds, setTravelHistoryLocationIds] = useState<
-    Set<number>
-  >(new Set());
-  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
-  const [travelHistoryItems, setTravelHistoryItems] = useState<HistoryItem[]>(
-    [],
-  );
-  const [accountStats, setAccountStats] = useState<AccountStats>({
-    wishlistCount: 0,
-    visitedCount: 0,
-    reviewCount: 0,
-    chatSessionsCount: 0,
-  });
-  const [expandedReviewLocationIds, setExpandedReviewLocationIds] = useState<
-    Set<number>
-  >(new Set());
-  const [reviewTextDrafts, setReviewTextDrafts] = useState<
-    Record<number, string>
-  >({});
-  const [ratingDrafts, setRatingDrafts] = useState<Record<number, number>>({});
-  const [savingReviewLocationId, setSavingReviewLocationId] = useState<
-    number | null
-  >(null);
-  const [deletingReviewLocationId, setDeletingReviewLocationId] = useState<
-    number | null
-  >(null);
-  const [deletingHistoryLocationId, setDeletingHistoryLocationId] = useState<
-    number | null
-  >(null);
-  const [confirmDeleteReviewLocationId, setConfirmDeleteReviewLocationId] =
-    useState<number | null>(null);
-  const [searchCity, setSearchCity] = useState("");
-  const filteredCities = Cities?.filter((city) => {
-    return city.name?.toLowerCase().includes(searchCity.toLowerCase());
-  });
-
-  const filteredLocations = Locations.filter((l) => l.city_id === selectedCity);
-  const wishlistCities = Cities.filter((city) => wishlistCityIds.has(city.id));
-  const wishlistLocations = Locations.filter((location) =>
-    wishlistLocationIds.has(location.id),
-  );
-  const filteredImages = Images.filter(
-    (img) => img.location_id === selectedLocation,
-  );
-  const locationImageById = Images.reduce<Record<number, string>>(
-    (acc, img) => {
-      if (!acc[img.location_id]) {
-        acc[img.location_id] = img.image_url;
-      }
-      return acc;
     },
-    {},
-  );
-
-  const currentCity = Cities?.find((c) => c.id === selectedCity);
-  const currentLocation = Locations.find((l) => l.id === selectedLocation);
-  const parsedLatitude = currentLocation
-    ? Number(currentLocation.latitude)
-    : Number.NaN;
-  const parsedLongitude = currentLocation
-    ? Number(currentLocation.longitude)
-    : Number.NaN;
-  const hasValidCoordinates =
-    Number.isFinite(parsedLatitude) &&
-    Number.isFinite(parsedLongitude) &&
-    parsedLatitude >= -90 &&
-    parsedLatitude <= 90 &&
-    parsedLongitude >= -180 &&
-    parsedLongitude <= 180;
-  const googleMapsUrl = hasValidCoordinates
-    ? `https://www.google.com/maps?q=${parsedLatitude},${parsedLongitude}`
-    : "";
-  const mapEmbedUrl = hasValidCoordinates
-    ? `https://maps.google.com/maps?q=${parsedLatitude},${parsedLongitude}&z=12&output=embed`
-    : "";
-
-  const handleLogoutClick = () => {
-    setShowLogoutModal(true);
-  };
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("token");
-    return {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
-  };
-
-  const toggleLocationCollection = (
-    locationId: number,
-    collection: "wishlist" | "travelHistory",
-  ) => {
-    if (!User?.id) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    if (collection === "wishlist") {
-      setWishlistLocationIds((prev) => {
-        const updated = new Set(prev);
-        if (updated.has(locationId)) {
-          updated.delete(locationId);
-        } else {
-          updated.add(locationId);
-        }
-        return updated;
-      });
-      return;
-    }
-
-    // This toggle is persisted in the database via `/api/history/visited`.
-    const userId = User?.id;
-    if (typeof userId !== "number") return;
-
-    (async () => {
-      try {
-        const response = await fetch(
-          "http://localhost:9000/api/history/visited",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              location_id: locationId,
-            }),
-          },
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "History update failed");
-        }
-
-        // Refresh from DB so review/rating state stays consistent too.
-        await loadTravelHistory(userId);
-      } catch (error) {
-        console.error(error);
+    searchCity,
+    setSearchCity,
+    filteredCities,
+    selectedCity,
+    setSelectedCity: (id: number | null) => {
+      setSelectedCity(id);
+    },
+    setSelectedLocation,
+    wishlistCityIds,
+    toggleCityWishlist,
+    onCloseMobile: closeSidebar,
+    onLogOut: handleLogoutClick,
+    darkMode,
+    toggleTheme: onToggleTheme,
+    onDesktopToggle: () => {
+      if (isSidebarOpen) {
+        closeSidebar();
+      } else {
+        openSidebar();
       }
-    })();
+    },
+    isExpanded: isSidebarOpen,
+    onOpenAccountOverlay: () => setIsAccountOverlayOpen(true),
   };
 
-  const loadWishlist = async (userId: number) => {
-    try {
-      const response = await fetch(
-        `http://localhost:9000/api/wishlist/${userId}`,
-      );
-      if (!response.ok) return;
-      const data: WishlistItem[] = await response.json();
-      setWishlistItems(data);
-      const cityIds = new Set<number>();
-      const locationIds = new Set<number>();
-
-      data.forEach((item) => {
-        if (item.city_id !== null) cityIds.add(item.city_id);
-        if (item.location_id !== null) locationIds.add(item.location_id);
-      });
-
-      setWishlistCityIds(cityIds);
-      setWishlistLocationIds(locationIds);
-    } catch (error) {
-      console.error("Failed to load wishlist:", error);
-    }
+  const citiesViewProps = {
+    currentCity,
+    filteredLocations,
+    setSelectedLocation,
+    wishlistCityIds,
+    toggleCityWishlist,
+    wishlistLocationIds,
+    toggleLocationWishlist,
+    travelHistoryLocationIds,
+    toggleLocationCollection,
   };
 
-  useEffect(() => {
-    if (User?.id) {
-      loadWishlist(User.id);
-    }
-  }, [User?.id]);
-
-  useEffect(() => {
-    const loadAccountStats = async () => {
-      if (!User?.id) {
-        setAccountStats({
-          wishlistCount: 0,
-          visitedCount: 0,
-          reviewCount: 0,
-          chatSessionsCount: 0,
-        });
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          "http://localhost:9000/api/dashboard/stats",
-          {
-            headers: getAuthHeaders(),
-          },
-        );
-        if (!response.ok) return;
-        const data: AccountStats = await response.json();
-        setAccountStats(data);
-      } catch (error) {
-        console.error("Failed to load account stats:", error);
-      }
-    };
-
-    void loadAccountStats();
-  }, [User?.id]);
-
-  const loadTravelHistory = async (userId: number) => {
-    try {
-      const response = await fetch(
-        `http://localhost:9000/api/history/${userId}`,
-      );
-      if (!response.ok) return;
-
-      const data: HistoryItem[] = await response.json();
-      // Backend sorts by \`travel_date DESC\`; keep the latest entry per location.
-      const latestByLocationId = new Map<number, HistoryItem>();
-      data.forEach((item) => {
-        if (!latestByLocationId.has(item.location_id)) {
-          latestByLocationId.set(item.location_id, item);
-        }
-      });
-
-      const items = Array.from(latestByLocationId.values());
-      setTravelHistoryItems(items);
-      setTravelHistoryLocationIds(new Set(items.map((i) => i.location_id)));
-
-      const reviewDrafts: Record<number, string> = {};
-      const ratingDraftsLocal: Record<number, number> = {};
-      items.forEach((i) => {
-        reviewDrafts[i.location_id] = i.review_text ?? "";
-        ratingDraftsLocal[i.location_id] = i.rating ?? 1;
-      });
-      setReviewTextDrafts(reviewDrafts);
-      setRatingDrafts(ratingDraftsLocal);
-      setExpandedReviewLocationIds(new Set());
-    } catch (error) {
-      console.error("Failed to load travel history:", error);
-    }
+  const wishlistViewProps = {
+    wishlistCities,
+    wishlistLocations,
+    locationImageById,
+    onRemoveCity: removeCityFromWishlist,
+    onRemoveLocation: removeLocationFromWishlist,
+    setActiveSection,
+    setSelectedCity,
+    setSelectedLocation,
   };
 
-  useEffect(() => {
-    if (User?.id) {
-      loadTravelHistory(User.id);
-    }
-  }, [User?.id]);
-
-  const toggleReviewSection = (locationId: number) => {
-    // Toggle expanded/collapsed state
-    setExpandedReviewLocationIds((prev) => {
-      const updated = new Set(prev);
-      if (updated.has(locationId)) updated.delete(locationId);
-      else updated.add(locationId);
-      return updated;
-    });
-
-    // When opening, hydrate drafts from saved values.
-    const item = travelHistoryItems.find((i) => i.location_id === locationId);
-    setReviewTextDrafts((prev) => ({
-      ...prev,
-      [locationId]: item?.review_text ?? "",
-    }));
-    setRatingDrafts((prev) => ({
-      ...prev,
-      [locationId]: item?.rating ?? 1,
-    }));
+  const travelHistoryViewProps = {
+    travelHistoryItems,
+    Locations:
+      filteredLocations.length >= 0
+        ? travelHistoryItems.length >= 0
+          ? []
+          : []
+        : [],
+    expandedReviewLocationIds,
+    toggleReviewSection,
+    reviewTextDrafts,
+    setReviewTextDrafts,
+    ratingDrafts,
+    setRatingDrafts,
+    savingReviewLocationId,
+    saveReviewForLocation,
+    deleteReviewForLocation,
+    initiateDeleteReview,
+    deletingReviewLocationId,
+    confirmDeleteReviewLocationId,
+    setConfirmDeleteReviewLocationId,
+    locationImageById,
+    deletingHistoryLocationId,
+    removeLocationFromTravelHistory,
+    setActiveSection,
+    setSelectedCity,
+    setSelectedLocation,
   };
 
-  const saveReviewForLocation = async (locationId: number) => {
-    if (!User?.id) return;
-    const review_text = reviewTextDrafts[locationId]?.trim() ?? "";
-    const rating = ratingDrafts[locationId] ?? 1;
-
-    setSavingReviewLocationId(locationId);
-    try {
-      const response = await fetch("http://localhost:9000/api/history/review", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: User.id,
-          location_id: locationId,
-          review_text,
-          rating,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to save review");
-      }
-
-      const updated: HistoryItem = await response.json();
-      setTravelHistoryItems((prev) =>
-        prev.map((i) => (i.location_id === locationId ? updated : i)),
-      );
-
-      if (selectedLocation === locationId) {
-        await loadLocationReviews(locationId);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setSavingReviewLocationId(null);
-    }
+  const locationDetailsViewProps = {
+    currentLocation,
+    cityLocations: filteredLocations,
+    parsedLatitude,
+    parsedLongitude,
+    hasValidCoordinates,
+    googleMapsUrl,
+    mapEmbedUrl,
+    wishlistLocationIds,
+    toggleLocationWishlist,
+    travelHistoryLocationIds,
+    toggleLocationCollection,
+    filteredImages,
+    setSelectedLocation,
+    locationReviews,
   };
 
-  const initiateDeleteReview = (locationId: number) => {
-    setConfirmDeleteReviewLocationId(locationId);
-  };
-
-  const deleteReviewForLocation = async (locationId: number) => {
-    if (!User?.id) return;
-
-    setDeletingReviewLocationId(locationId);
-    setConfirmDeleteReviewLocationId(null);
-    try {
-      const response = await fetch("http://localhost:9000/api/history/review", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: User.id,
-          location_id: locationId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to delete review");
-      }
-
-      const updated: HistoryItem = await response.json();
-      setTravelHistoryItems((prev) =>
-        prev.map((i) => (i.location_id === locationId ? updated : i)),
-      );
-      setReviewTextDrafts((prev) => {
-        const next = { ...prev };
-        delete next[locationId];
-        return next;
-      });
-      setRatingDrafts((prev) => {
-        const next = { ...prev };
-        delete next[locationId];
-        return next;
-      });
-
-      if (selectedLocation === locationId) {
-        await loadLocationReviews(locationId);
-      }
-
-      // Close the expanded review section after successful deletion
-      toggleReviewSection(locationId);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setDeletingReviewLocationId(null);
-    }
-  };
-
-  const toggleCityWishlist = async (cityId: number) => {
-    if (!User?.id) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    const isAlreadyWishlisted = wishlistCityIds.has(cityId);
-
-    try {
-      const response = await fetch("http://localhost:9000/api/wishlist", {
-        method: isAlreadyWishlisted ? "DELETE" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: User.id,
-          city_id: cityId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Wishlist update failed");
-      }
-
-      setWishlistCityIds((prev) => {
-        const updated = new Set(prev);
-        if (updated.has(cityId)) {
-          updated.delete(cityId);
-        } else {
-          updated.add(cityId);
-        }
-        return updated;
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const toggleLocationWishlist = async (locationId: number) => {
-    if (!User?.id) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    const isAlreadyWishlisted = wishlistLocationIds.has(locationId);
-
-    try {
-      const response = await fetch("http://localhost:9000/api/wishlist", {
-        method: isAlreadyWishlisted ? "DELETE" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: User.id,
-          location_id: locationId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Wishlist update failed");
-      }
-
-      setWishlistLocationIds((prev) => {
-        const updated = new Set(prev);
-        if (updated.has(locationId)) {
-          updated.delete(locationId);
-        } else {
-          updated.add(locationId);
-        }
-        return updated;
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const removeCityFromWishlist = async (cityId: number) => {
-    if (!User?.id) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    try {
-      const response = await fetch("http://localhost:9000/api/wishlist", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: User.id,
-          city_id: cityId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || "Failed to remove city from wishlist",
-        );
-      }
-
-      await loadWishlist(User.id);
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  };
-
-  const removeLocationFromWishlist = async (locationId: number) => {
-    if (!User?.id) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    try {
-      const response = await fetch("http://localhost:9000/api/wishlist", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: User.id,
-          location_id: locationId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || "Failed to remove location from wishlist",
-        );
-      }
-
-      await loadWishlist(User.id);
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  };
-
-  const removeLocationFromTravelHistory = async (locationId: number) => {
-    if (!User?.id) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    setDeletingHistoryLocationId(locationId);
-    try {
-      const response = await fetch(
-        "http://localhost:9000/api/history/visited",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: User.id,
-            location_id: locationId,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || "Failed to remove from travel history",
-        );
-      }
-
-      await loadTravelHistory(User.id);
-    } catch (error) {
-      console.error(error);
-      throw error;
-    } finally {
-      setDeletingHistoryLocationId(null);
-    }
-  };
-
-  const handleSaveProfile = async (name: string, email: string) => {
-    const response = await fetch(
-      "http://localhost:9000/api/dashboard/profile",
-      {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ name, email }),
-      },
-    );
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to update profile");
-    }
-
-    setUser((prev) => ({
-      ...(prev ?? {}),
-      id: data.user.id,
-      name: data.user.name,
-      email: data.user.email,
-      profile_image: data.user.profile_image,
-    }));
-  };
-
-  const handleDeleteAccount = async () => {
-    const response = await fetch(
-      "http://localhost:9000/api/dashboard/account",
-      {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      },
-    );
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to delete account");
-    }
-
-    localStorage.removeItem("token");
-    navigate("/ghumphir");
-  };
-
-  const handleSubmitReport = async (
-    type: "bug" | "feedback" | "feature_requests",
-    message: string,
-  ) => {
-    const response = await fetch("http://localhost:9000/api/reports", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ type, message }),
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to submit report");
-    }
+  const accountOverlayProps = {
+    isOpen: isAccountOverlayOpen,
+    onClose: () => setIsAccountOverlayOpen(false),
+    user,
+    darkMode,
+    onToggleTheme,
+    onSaveProfile: handleSaveProfile,
+    onDeleteAccount: handleDeleteAccount,
+    onLogout: handleLogoutClick,
+    onUploadProfileImage: uploadProfileImage,
+    onSubmitReport: handleSubmitReport,
+    accountStats,
+    wishlistItems,
+    travelHistoryItems,
+    preview,
   };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-gray-900 text-slate-900 dark:text-slate-200 transition-colors overflow-hidden">
-      {/* Mobile Top Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-800 shadow-sm z-30 shrink-0">
         <h1 className="font-bold text-xl text-sky-600 dark:text-sky-400">
           Dashboard
@@ -860,7 +227,6 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
         </button>
       </div>
 
-      {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
@@ -868,155 +234,47 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
         />
       )}
 
-      {/* Sidebar Wrapper */}
       <div
         className={`fixed inset-y-0 left-0 md:relative md:inset-y-auto md:left-auto transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} ${isSidebarClosing ? "md:-translate-x-2" : "md:translate-x-0"} z-50 md:z-auto transition-all duration-300 ease-in-out h-full md:h-screen ${isSidebarOpen ? "w-60" : "w-16 md:w-16"} shrink-0 overflow-hidden md:border-r md:border-sky-900/40 md:shadow-[10px_0_26px_rgba(2,8,23,0.45)]`}
       >
-        <DashboardSidebar
-          onAuthRequired={() => setShowAuthModal(true)}
-          User={User}
-          preview={preview}
-          activeSection={activeSection}
-          setActiveSection={(sec) => {
-            setActiveSection(sec);
-            if (sec !== "cities") {
-              closeSidebarOnMobile();
-            }
-          }}
-          searchCity={searchCity}
-          setSearchCity={setSearchCity}
-          filteredCities={filteredCities}
-          selectedCity={selectedCity}
-          setSelectedCity={(id) => {
-            setSelectedCity(id);
-          }}
-          setSelectedLocation={setSelectedLocation}
-          wishlistCityIds={wishlistCityIds}
-          toggleCityWishlist={toggleCityWishlist}
-          onCloseMobile={closeSidebar}
-          onLogOut={handleLogoutClick}
-          darkMode={darkMode}
-          toggleTheme={onToggleTheme}
-          onDesktopToggle={() => {
-            if (isSidebarOpen) {
-              closeSidebar();
-            } else {
-              openSidebar();
-            }
-          }}
-          isExpanded={isSidebarOpen}
-          onOpenAccountOverlay={() => setIsAccountOverlayOpen(true)}
-        />
+        <DashboardSidebar {...dashboardSidebarProps} />
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 p-2 sm:p-3 md:p-4 overflow-y-auto w-full md:w-auto h-[calc(100vh-72px)] md:h-screen relative md:border-l md:border-slate-200/10">
-        {/* No city selected */}
         {activeSection === "cities" && !selectedCity && (
           <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-400 text-xl">
             Select a city to explore locations
           </div>
         )}
 
-        {/* City selected but no location selected */}
         {activeSection === "cities" && selectedCity && !selectedLocation && (
-          <CitiesView
-            currentCity={currentCity}
-            filteredLocations={filteredLocations}
-            setSelectedLocation={setSelectedLocation}
-            wishlistCityIds={wishlistCityIds}
-            toggleCityWishlist={toggleCityWishlist}
-            wishlistLocationIds={wishlistLocationIds}
-            toggleLocationWishlist={toggleLocationWishlist}
-            travelHistoryLocationIds={travelHistoryLocationIds}
-            toggleLocationCollection={toggleLocationCollection}
-          />
+          <CitiesView {...citiesViewProps} />
         )}
 
         {activeSection === "wishlist" && (
-          <WishlistView
-            wishlistCities={wishlistCities}
-            wishlistLocations={wishlistLocations}
-            locationImageById={locationImageById}
-            onRemoveCity={removeCityFromWishlist}
-            onRemoveLocation={removeLocationFromWishlist}
-            setActiveSection={setActiveSection}
-            setSelectedCity={setSelectedCity}
-            setSelectedLocation={setSelectedLocation}
-          />
+          <WishlistView {...wishlistViewProps} />
         )}
 
         {activeSection === "chatbot" && (
           <div className="h-full min-h-0">
-            <ChatbotView userId={User?.id} />
+            <ChatbotView userId={user?.id} />
           </div>
         )}
 
         {activeSection === "travelHistory" && (
           <TravelHistoryView
-            travelHistoryItems={travelHistoryItems}
-            Locations={Locations}
-            expandedReviewLocationIds={expandedReviewLocationIds}
-            toggleReviewSection={toggleReviewSection}
-            reviewTextDrafts={reviewTextDrafts}
-            setReviewTextDrafts={setReviewTextDrafts}
-            ratingDrafts={ratingDrafts}
-            setRatingDrafts={setRatingDrafts}
-            savingReviewLocationId={savingReviewLocationId}
-            saveReviewForLocation={saveReviewForLocation}
-            deleteReviewForLocation={deleteReviewForLocation}
-            initiateDeleteReview={initiateDeleteReview}
-            deletingReviewLocationId={deletingReviewLocationId}
-            confirmDeleteReviewLocationId={confirmDeleteReviewLocationId}
-            setConfirmDeleteReviewLocationId={setConfirmDeleteReviewLocationId}
-            locationImageById={locationImageById}
-            deletingHistoryLocationId={deletingHistoryLocationId}
-            removeLocationFromTravelHistory={removeLocationFromTravelHistory}
-            setActiveSection={setActiveSection}
-            setSelectedCity={setSelectedCity}
-            setSelectedLocation={setSelectedLocation}
+            {...travelHistoryViewProps}
+            Locations={filteredLocations}
           />
         )}
 
-        {/* Location selected */}
         {activeSection === "cities" && selectedLocation && (
-          <LocationDetailsView
-            currentLocation={currentLocation}
-            cityLocations={filteredLocations}
-            parsedLatitude={parsedLatitude}
-            parsedLongitude={parsedLongitude}
-            hasValidCoordinates={hasValidCoordinates}
-            googleMapsUrl={googleMapsUrl}
-            mapEmbedUrl={mapEmbedUrl}
-            wishlistLocationIds={wishlistLocationIds}
-            toggleLocationWishlist={toggleLocationWishlist}
-            travelHistoryLocationIds={travelHistoryLocationIds}
-            toggleLocationCollection={toggleLocationCollection}
-            filteredImages={filteredImages}
-            setSelectedLocation={setSelectedLocation}
-            locationReviews={locationReviews}
-          />
+          <LocationDetailsView {...locationDetailsViewProps} />
         )}
       </div>
 
-      <AccountOverlay
-        isOpen={isAccountOverlayOpen}
-        onClose={() => setIsAccountOverlayOpen(false)}
-        user={User}
-        darkMode={darkMode}
-        onToggleTheme={onToggleTheme}
-        onSaveProfile={handleSaveProfile}
-        onDeleteAccount={handleDeleteAccount}
-        onLogout={handleLogoutClick}
-        onUploadProfileImage={uploadProfileImage}
-        onSubmitReport={handleSubmitReport}
-        accountStats={accountStats}
-        wishlistItems={wishlistItems}
-        travelHistoryItems={travelHistoryItems}
-        preview={preview}
-      />
+      <AccountOverlay {...accountOverlayProps} />
 
-      {/* Authentication Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200">
@@ -1050,7 +308,6 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
         </div>
       )}
 
-      {/* Logout Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200">

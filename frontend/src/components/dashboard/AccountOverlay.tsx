@@ -292,7 +292,10 @@ const AccountOverlay = ({
   };
 
   return (
-    <div className="fixed inset-0 z-70 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div
+      id="account-overlay"
+      className="fixed inset-0 z-70 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+    >
       <div className="w-full max-w-4xl max-h-[82vh] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#111827] text-slate-900 dark:text-slate-100 shadow-2xl">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-[#0f172a]/95 px-5 py-4 backdrop-blur">
           <h2 className="text-lg font-semibold">My Account</h2>

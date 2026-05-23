@@ -53,6 +53,21 @@ const normalizeReplyText = (reply: unknown): string => {
   }
 };
 
+const getChatIdFromHash = () => {
+  const rawHash = window.location.hash.replace(/^#/, "").trim();
+  if (!rawHash.toLowerCase().startsWith("chatbot")) return null;
+
+  const [, chatId] = rawHash.split("/");
+  return chatId || null;
+};
+
+const setChatIdInHash = (chatId: string | null) => {
+  const nextHash = chatId ? `#chatbot/${chatId}` : "#chatbot";
+  if (window.location.hash !== nextHash) {
+    window.location.hash = nextHash;
+  }
+};
+
 const ChatbotView = ({ userId }: ChatbotViewProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
   const [input, setInput] = useState("");
@@ -69,6 +84,18 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
   const [renameText, setRenameText] = useState("");
   const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const syncSelectedChatFromHash = () => {
+      const chatId = getChatIdFromHash();
+      setSelectedChatId(chatId);
+    };
+
+    syncSelectedChatFromHash();
+    window.addEventListener("hashchange", syncSelectedChatFromHash);
+    return () =>
+      window.removeEventListener("hashchange", syncSelectedChatFromHash);
+  }, []);
 
   const fetchSessions = useCallback(async () => {
     if (!userId) return;
@@ -217,6 +244,7 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
       if (data.session_id && !selectedChatId) {
         const newSessionId = data.session_id.toString();
         setSelectedChatId(newSessionId);
+        setChatIdInHash(newSessionId);
         await fetchSessions();
       }
 
@@ -247,6 +275,7 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
     setInput("");
     setSelectedChatId(null);
     setIsMobileHistoryOpen(false);
+    setChatIdInHash(null);
   };
 
   const handleDeleteChat = async (chatId: string) => {
@@ -275,6 +304,7 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
   const handleSelectChat = (chatId: string) => {
     setSelectedChatId(chatId);
     setIsMobileHistoryOpen(false);
+    setChatIdInHash(chatId);
   };
 
   const handleRenameChat = async (chatId: string) => {
@@ -430,7 +460,10 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
   );
 
   return (
-    <div className="w-full h-full min-h-0 flex flex-col gap-4">
+    <div
+      id="chatbot-view"
+      className="w-full h-full min-h-0 flex flex-col gap-4"
+    >
       <div className="flex items-center justify-between gap-3">
         <h2 className="min-w-0 flex-1 truncate text-2xl font-semibold leading-none tracking-tight text-sky-900 dark:text-sky-400 sm:text-3xl">
           Nepal Travel Chatbot

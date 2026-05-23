@@ -95,7 +95,10 @@ function authenticateHistoryRoute(fastify) {
         .send({ error: "History entry not found for this user/location" });
     }
 
-    history.review_text = review_text ?? null;
+    const normalizedReviewText =
+      typeof review_text === "string" ? review_text.trim() : "";
+    history.review_text =
+      normalizedReviewText === "" ? null : normalizedReviewText;
 
     // Allow null, otherwise enforce numeric rating.
     const parsedRating =

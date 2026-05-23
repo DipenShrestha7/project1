@@ -25,4 +25,7 @@ dist-ssr
 backend/uploads/
 uploads/
 backend/.env
+frontend/.env
 frontend/src/assets/
+backend/.venv/
+backend/__pycache__/

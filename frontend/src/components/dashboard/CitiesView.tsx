@@ -52,6 +52,7 @@ const CitiesView: React.FC<CitiesViewProps> = ({
 
   return (
     <div
+      id="cities-view"
       onClick={() => {
         setActiveDropdownId(null);
         setActiveWishlistDropdownId(null);
