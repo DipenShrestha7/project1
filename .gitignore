@@ -22,10 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-backend/uploads/
-uploads/
-backend/.env
-frontend/.env
-frontend/src/assets/
+backend/uploads/users/
 backend/.venv/
-backend/__pycache__/
+__pycache__
+*.pyc
+.env
+.env.*
+!.env.example

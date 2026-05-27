@@ -11,6 +11,7 @@ import {
   LogOut,
 } from "lucide-react";
 import type { AccountStats, HistoryItem, User, WishlistItem } from "./types";
+import defaultPfp from "../../assets/pfp.jpg";
 
 type ReportType = "bug" | "feedback" | "feature_requests";
 
@@ -325,7 +326,7 @@ const AccountOverlay = ({
                     preview ||
                     (user?.profile_image
                       ? `http://localhost:9000${user.profile_image}`
-                      : "https://placehold.co/96x96/1e293b/e2e8f0?text=U")
+                      : defaultPfp)
                   }
                   alt="Profile"
                   className="h-20 w-20 rounded-full object-cover border border-slate-400 dark:border-slate-600"
