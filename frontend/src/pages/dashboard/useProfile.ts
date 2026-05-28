@@ -25,9 +25,13 @@ export const useProfile = () => {
     const token = localStorage.getItem("token");
     return {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
     };
   };
+
+  const getJsonAuthHeaders = () => ({
+    ...getAuthHeaders(),
+    "Content-Type": "application/json",
+  });
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -101,7 +105,7 @@ export const useProfile = () => {
   const handleSaveProfile = async (name: string, email: string) => {
     const response = await fetch(`${apiBaseUrl}/api/dashboard/profile`, {
       method: "PATCH",
-      headers: getAuthHeaders(),
+      headers: getJsonAuthHeaders(),
       body: JSON.stringify({ name, email }),
     });
     const data = await response.json().catch(() => ({}));
@@ -134,7 +138,7 @@ export const useProfile = () => {
   ) => {
     const response = await fetch(`${apiBaseUrl}/api/reports`, {
       method: "POST",
-      headers: getAuthHeaders(),
+      headers: getJsonAuthHeaders(),
       body: JSON.stringify({ type, message }),
     });
     const data = await response.json().catch(() => ({}));
