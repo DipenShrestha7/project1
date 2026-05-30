@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import type { User, Cities, ActiveSection } from "./types";
 import pfp from "../../assets/pfp.jpg";
 import logo from "../../assets/ghumphirlogo.png";
+import { getImageUrl } from "../../config/api";
 
 interface DashboardSidebarProps {
   onAuthRequired: () => void;
@@ -69,10 +70,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   const getProfileImageSrc = (profileImage: string) => {
-    if (/^https?:\/\//i.test(profileImage)) {
-      return profileImage;
-    }
-    return `http://localhost:9000${profileImage}`;
+    return getImageUrl(profileImage);
   };
 
   const handleRestrictedNavigation = (section: ActiveSection) => {

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { WishlistItem } from "../../components/dashboard/types";
-
-const apiBaseUrl = "http://localhost:9000";
+import { API_URL } from "../../config/api";
 
 export const useWishlist = (userId?: number) => {
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
@@ -14,7 +13,7 @@ export const useWishlist = (userId?: number) => {
 
   const loadWishlist = async (uid: number) => {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/wishlist/${uid}`);
+      const response = await fetch(`${API_URL}/api/wishlist/${uid}`);
       if (!response.ok) return;
       const data: WishlistItem[] = await response.json();
       setWishlistItems(data);
@@ -39,7 +38,7 @@ export const useWishlist = (userId?: number) => {
     if (!userId) return;
     const isAlready = wishlistCityIds.has(cityId);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/wishlist`, {
+      const response = await fetch(`${API_URL}/api/wishlist`, {
         method: isAlready ? "DELETE" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, city_id: cityId }),
@@ -63,7 +62,7 @@ export const useWishlist = (userId?: number) => {
     if (!userId) return;
     const isAlready = wishlistLocationIds.has(locationId);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/wishlist`, {
+      const response = await fetch(`${API_URL}/api/wishlist`, {
         method: isAlready ? "DELETE" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, location_id: locationId }),
@@ -83,7 +82,7 @@ export const useWishlist = (userId?: number) => {
   const removeCityFromWishlist = async (cityId: number, userId?: number) => {
     if (!userId) return;
     try {
-      const response = await fetch(`${apiBaseUrl}/api/wishlist`, {
+      const response = await fetch(`${API_URL}/api/wishlist`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, city_id: cityId }),
@@ -102,7 +101,7 @@ export const useWishlist = (userId?: number) => {
   ) => {
     if (!userId) return;
     try {
-      const response = await fetch(`${apiBaseUrl}/api/wishlist`, {
+      const response = await fetch(`${API_URL}/api/wishlist`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, location_id: locationId }),

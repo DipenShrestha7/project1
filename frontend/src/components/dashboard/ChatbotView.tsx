@@ -9,6 +9,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { API_URL } from "../../config/api";
 
 type ChatRole = "ai" | "user";
 
@@ -101,7 +102,7 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
     if (!userId) return;
 
     try {
-      const res = await fetch("http://localhost:9000/api/sessions", {
+      const res = await fetch(`${API_URL}/api/sessions`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -141,7 +142,7 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
       setLoadingHistory(true);
       try {
         const res = await fetch(
-          `http://localhost:9000/api/sessions/${selectedChatId}/messages`,
+          `${API_URL}/api/sessions/${selectedChatId}/messages`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -214,7 +215,7 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
 
     try {
       const sessionId = selectedChatId ?? null;
-      const res = await fetch("http://localhost:9000/api/chat", {
+      const res = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -281,7 +282,7 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
   const handleDeleteChat = async (chatId: string) => {
     setDeletingChatId(chatId);
     try {
-      await fetch(`http://localhost:9000/api/sessions/${chatId}`, {
+      await fetch(`${API_URL}/api/sessions/${chatId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -314,7 +315,7 @@ const ChatbotView = ({ userId }: ChatbotViewProps) => {
     }
 
     try {
-      const res = await fetch(`http://localhost:9000/api/sessions/${chatId}`, {
+      const res = await fetch(`${API_URL}/api/sessions/${chatId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

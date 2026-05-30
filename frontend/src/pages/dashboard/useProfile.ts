@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AccountStats, User } from "../../components/dashboard/types";
-
-const apiBaseUrl = "http://localhost:9000";
+import { API_URL, getImageUrl } from "../../config/api";
 
 const getProfileImageSrc = (profileImage?: string | null) => {
   if (!profileImage) return null;
-  if (/^https?:\/\//i.test(profileImage)) return profileImage;
-  return `${apiBaseUrl}${profileImage}`;
+  return getImageUrl(profileImage);
 };
 
 export const useProfile = () => {
@@ -38,7 +36,7 @@ export const useProfile = () => {
       const token = localStorage.getItem("token");
       if (!token) return;
       try {
-        const response = await fetch(`${apiBaseUrl}/api/dashboard`, {
+        const response = await fetch(`${API_URL}/api/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) return;
@@ -65,7 +63,7 @@ export const useProfile = () => {
         return;
       }
       try {
-        const response = await fetch(`${apiBaseUrl}/api/dashboard/stats`, {
+        const response = await fetch(`${API_URL}/api/dashboard/stats`, {
           headers: getAuthHeaders(),
         });
         if (!response.ok) return;
@@ -86,7 +84,7 @@ export const useProfile = () => {
     formData.append("photo", file);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${apiBaseUrl}/api/dashboard/upload`, {
+      const response = await fetch(`${API_URL}/api/dashboard/upload`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -103,7 +101,7 @@ export const useProfile = () => {
   };
 
   const handleSaveProfile = async (name: string, email: string) => {
-    const response = await fetch(`${apiBaseUrl}/api/dashboard/profile`, {
+    const response = await fetch(`${API_URL}/api/dashboard/profile`, {
       method: "PATCH",
       headers: getJsonAuthHeaders(),
       body: JSON.stringify({ name, email }),
@@ -121,7 +119,7 @@ export const useProfile = () => {
   };
 
   const handleDeleteAccount = async () => {
-    const response = await fetch(`${apiBaseUrl}/api/dashboard/account`, {
+    const response = await fetch(`${API_URL}/api/dashboard/account`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -136,7 +134,7 @@ export const useProfile = () => {
     type: "bug" | "feedback" | "feature_requests",
     message: string,
   ) => {
-    const response = await fetch(`${apiBaseUrl}/api/reports`, {
+    const response = await fetch(`${API_URL}/api/reports`, {
       method: "POST",
       headers: getJsonAuthHeaders(),
       body: JSON.stringify({ type, message }),

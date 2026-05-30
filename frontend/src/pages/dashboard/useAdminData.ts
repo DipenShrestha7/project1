@@ -7,8 +7,7 @@ import type {
   Image,
   Images,
 } from "../../components/dashboard/types";
-
-const apiBaseUrl = "http://localhost:9000";
+import { API_URL } from "../../config/api";
 
 export const useAdminData = () => {
   const [cities, setCities] = useState<Cities[]>([]);
@@ -18,7 +17,7 @@ export const useAdminData = () => {
   useEffect(() => {
     const fetchCityData = async () => {
       try {
-        const response = await fetch(`${apiBaseUrl}/api/admin/cities`);
+        const response = await fetch(`${API_URL}/api/admin/cities`);
         const data: City[] = await response.json();
         const formatted: Cities[] = data.map((item) => ({
           id: item.city_id,
@@ -37,7 +36,7 @@ export const useAdminData = () => {
   useEffect(() => {
     const fetchLocationData = async () => {
       try {
-        const response = await fetch(`${apiBaseUrl}/api/admin/locations`);
+        const response = await fetch(`${API_URL}/api/admin/locations`);
         const data: Location[] = await response.json();
         const formatted: Locations[] = data.map((item) => ({
           id: item.location_id,
@@ -59,7 +58,7 @@ export const useAdminData = () => {
   useEffect(() => {
     const fetchImageData = async () => {
       try {
-        const response = await fetch(`${apiBaseUrl}/api/admin/images`);
+        const response = await fetch(`${API_URL}/api/admin/images`);
         const data: Image[] = await response.json();
         const formatted: Images[] = data.map((item) => ({
           id: item.image_id,

@@ -3,6 +3,7 @@ import { Eye, EyeOff, Moon, Sun } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import ghumphirLogo from "../assets/ghumphirlogo.png";
+import { API_URL } from "../config/api";
 
 type User = {
   fullName?: string;
@@ -80,9 +81,7 @@ const App = () => {
       return;
     }
 
-    const url = isLogin
-      ? "http://localhost:9000/api/login"
-      : "http://localhost:9000/api/signup";
+    const url = isLogin ? `${API_URL}/api/login` : `${API_URL}/api/signup`;
 
     const body = isLogin
       ? { email, password }
@@ -152,7 +151,7 @@ const App = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:9000/api/auth/google", {
+      const response = await fetch(`${API_URL}/api/auth/google`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { AccountStats, HistoryItem, User, WishlistItem } from "./types";
 import defaultPfp from "../../assets/pfp.jpg";
+import { API_URL, getImageUrl } from "../../config/api.ts";
 
 type ReportType = "bug" | "feedback" | "feature_requests";
 
@@ -247,7 +248,7 @@ const AccountOverlay = ({
       }
 
       const response = await fetch(
-        `http://localhost:9000/api/reports/public?${query.toString()}`,
+        `${API_URL}/api/reports/public?${query.toString()}`,
         { headers },
       );
       const data = await response.json().catch(() => []);
@@ -323,10 +324,7 @@ const AccountOverlay = ({
               <div className="flex flex-col items-center gap-2 md:w-34 md:shrink-0">
                 <img
                   src={
-                    preview ||
-                    (user?.profile_image
-                      ? `http://localhost:9000${user.profile_image}`
-                      : defaultPfp)
+                    preview || getImageUrl(user?.profile_image) || defaultPfp
                   }
                   alt="Profile"
                   className="h-20 w-20 rounded-full object-cover border border-slate-400 dark:border-slate-600"

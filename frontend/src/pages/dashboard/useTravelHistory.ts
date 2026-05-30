@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { HistoryItem, Review } from "../../components/dashboard/types";
-
-const apiBaseUrl = "http://localhost:9000";
+import { API_URL } from "../../config/api";
 
 export const useTravelHistory = (userId?: number) => {
   const [travelHistoryItems, setTravelHistoryItems] = useState<HistoryItem[]>(
@@ -32,9 +31,7 @@ export const useTravelHistory = (userId?: number) => {
 
   const loadLocationReviews = async (locationId: number) => {
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/location/${locationId}/reviews`,
-      );
+      const res = await fetch(`${API_URL}/api/location/${locationId}/reviews`);
       if (!res.ok) return;
       const data = await res.json();
       setLocationReviews(data);
@@ -45,7 +42,7 @@ export const useTravelHistory = (userId?: number) => {
 
   const loadTravelHistory = async (uid: number) => {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/history/${uid}`);
+      const response = await fetch(`${API_URL}/api/history/${uid}`);
       if (!response.ok) return;
       const data: HistoryItem[] = await response.json();
       const latestByLocationId = new Map<number, HistoryItem>();
@@ -106,7 +103,7 @@ export const useTravelHistory = (userId?: number) => {
     const rating = ratingDrafts[locationId] ?? 1;
     setSavingReviewLocationId(locationId);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/history/review`, {
+      const response = await fetch(`${API_URL}/api/history/review`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -143,7 +140,7 @@ export const useTravelHistory = (userId?: number) => {
     setDeletingReviewLocationId(locationId);
     setConfirmDeleteReviewLocationId(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/history/review`, {
+      const response = await fetch(`${API_URL}/api/history/review`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userIdParam, location_id: locationId }),
@@ -186,7 +183,7 @@ export const useTravelHistory = (userId?: number) => {
     if (!userIdParam) return;
     setDeletingHistoryLocationId(locationId);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/history/visited`, {
+      const response = await fetch(`${API_URL}/api/history/visited`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userIdParam, location_id: locationId }),

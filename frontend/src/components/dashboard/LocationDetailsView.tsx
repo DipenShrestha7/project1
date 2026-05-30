@@ -17,6 +17,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import type { Locations, Images, Review } from "./types";
+import { getImageUrl } from "../../config/api";
 
 interface LocationDetailsViewProps {
   currentLocation?: Locations;
@@ -520,17 +521,7 @@ const LocationDetailsView: React.FC<LocationDetailsViewProps> = ({
         {locationReviews && locationReviews.length > 0 ? (
           <div className="flex flex-col gap-4">
             {locationReviews.map((review, idx) => {
-              // Ensure we prepend the localhost backend URL if it's a relative path, but keep external URLs or blank ones intact
-              let avatarSrc = null;
-              if (review.profile_image) {
-                if (review.profile_image.startsWith("http")) {
-                  avatarSrc = review.profile_image;
-                } else if (!review.profile_image.startsWith("/")) {
-                  avatarSrc = `http://localhost:9000/${review.profile_image}`;
-                } else {
-                  avatarSrc = `http://localhost:9000${review.profile_image}`;
-                }
-              }
+              const avatarSrc = getImageUrl(review.profile_image);
 
               return (
                 <div
