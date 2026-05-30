@@ -61,7 +61,7 @@ const start = async () => {
     fastify.register(authenticateGoogleRoute, { prefix: "/api" });
 
     const port = process.env.PORT || 9000;
-    await fastify.listen({ port: port });
+    await fastify.listen({ port: port, host: "0.0.0.0" });
     console.log(`Server running on http://localhost:${port}`);
   } catch (err) {
     fastify.log.error(err);
