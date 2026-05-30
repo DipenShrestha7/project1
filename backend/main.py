@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import google.generativeai as genai
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 import os
 from google.adk.agents import Agent
@@ -10,14 +9,19 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-load_dotenv(".env")
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+load_dotenv()
 
 app = FastAPI()
 
+allowed_origins = [
+    "http://localhost:5173",
+    os.getenv("FRONTEND_URL"),
+    os.getenv("NODE_BACKEND_URL")
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[origin for origin in allowed_origins if origin],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -36,26 +40,25 @@ root_agent = Agent(
 )
 
 session_service = InMemorySessionService()
+
 runner = Runner(
     agent=root_agent,
     app_name="search_agent",
     session_service=session_service
 )
 
-
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
-    history: list = []
+    history: list = Field(default_factory=list)
 
+@app.get("/")
+async def home():
+    return {"status": "AI backend running"}
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
-        print(
-            f"📥 Received: message='{req.message}', session_id='{req.session_id}', history={len(req.history)}")
-
-        # create session if it doesn't exist
         try:
             await session_service.create_session(
                 app_name="search_agent",
@@ -63,11 +66,11 @@ async def chat(req: ChatRequest):
                 session_id=req.session_id
             )
         except Exception:
-            pass  # session already exists, that's fine
+            pass
 
-        # Build conversation context from history
         context_str = ""
-        if req.history and len(req.history) > 0:
+
+        if req.history:
             context_str = "Previous conversation history:\n"
             for msg in req.history:
                 role = msg.get("role", "user").upper()
@@ -75,7 +78,6 @@ async def chat(req: ChatRequest):
                 context_str += f"{role}: {content_text}\n"
             context_str += "\n---\n\nNow, the user is asking:\n"
 
-        # Combine history context with current message
         full_message = context_str + req.message
 
         content = types.Content(
@@ -84,6 +86,7 @@ async def chat(req: ChatRequest):
         )
 
         response_text = ""
+
         async for event in runner.run_async(
             user_id="user",
             session_id=req.session_id,
@@ -96,5 +99,4 @@ async def chat(req: ChatRequest):
         return {"reply": response_text}
 
     except Exception as e:
-        print(f"Error: {e}")  # shows in uvicorn terminal
         return {"reply": f"Error: {str(e)}"}
