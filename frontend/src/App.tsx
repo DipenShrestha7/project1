@@ -50,23 +50,16 @@ function App() {
   return (
     <Routes>
       <Route
-        path="/ghumphir"
+        path="/"
         element={<Home darkMode={darkMode} onToggleTheme={toggleTheme} />}
       />
+      <Route path="/login" element={<Navigate to="/?auth=login" replace />} />
+      <Route path="/signup" element={<Navigate to="/?auth=signup" replace />} />
       <Route
-        path="/ghumphir/login"
-        element={<Navigate to="/ghumphir?auth=login" replace />}
-      />
-      <Route
-        path="/ghumphir/signup"
-        element={<Navigate to="/ghumphir?auth=signup" replace />}
-      />
-      <Route
-        path="/ghumphir/dashboard"
+        path="/dashboard"
         element={<Dashboard darkMode={darkMode} onToggleTheme={toggleTheme} />}
       />
-      <Route path="/ghumphir/admin" element={<Admin />} />
-      <Route path="*" element={<Navigate to="/ghumphir" replace />} />
+      <Route path="/admin" element={<Admin />} />
     </Routes>
   );
 }
