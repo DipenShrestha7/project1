@@ -14,15 +14,38 @@ import path from "path";
 
 const fastify = Fastify({ logger: true });
 
-const allowedOrigins = new Set([
-  "http://localhost:5173",
-  process.env.WEBSITE_URL,
-  process.env.FRONTEND_URL,
-]);
+const normalizeOrigin = (value) => {
+  if (!value || typeof value !== "string") return null;
+
+  const trimmed = value.trim().replace(/^"|"$/g, "").replace(/\/$/, "");
+  if (!trimmed) return null;
+
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  return `https://${trimmed}`;
+};
+
+const allowedOrigins = new Set(
+  [
+    "http://localhost:5173",
+    process.env.WEBSITE_URL,
+    process.env.FRONTEND_URL,
+    process.env.VITE_WEBSITE_URL,
+    process.env.VERCEL_URL,
+  ]
+    .map(normalizeOrigin)
+    .filter(Boolean),
+);
 
 fastify.register(fastifyCors, {
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.has(origin)) {
+    const normalizedOrigin = normalizeOrigin(origin);
+
+    if (
+      !normalizedOrigin ||
+      allowedOrigins.has(normalizedOrigin) ||
+      normalizedOrigin.endsWith(".vercel.app")
+    ) {
       cb(null, true);
       return;
     }
