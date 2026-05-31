@@ -126,7 +126,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         {isExpanded && (
           <button
             type="button"
-            onClick={() => window.location.assign("/ghumphir/dashboard")}
+            onClick={() => window.location.assign("/dashboard")}
             className="h-10 flex items-center gap-2 pl-2.5 pr-2.5 py-2 rounded-xl bg-transparent hover:bg-white/5 dark:hover:bg-white/5 transition"
           >
             <img
@@ -396,9 +396,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
           {isExpanded && (
             <button
-              onClick={() =>
-                navigate("/ghumphir?auth=login&next=/ghumphir/dashboard")
-              }
+              onClick={() => navigate("/?auth=login&next=/dashboard")}
               className="flex-1 py-3 bg-sky-600 text-white font-semibold rounded-xl hover:bg-sky-700 transition shadow-md"
             >
               Log In

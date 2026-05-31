@@ -290,9 +290,7 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
             </p>
             <div className="flex flex-col gap-3 w-full">
               <button
-                onClick={() =>
-                  navigate("/ghumphir?auth=login&next=/ghumphir/dashboard")
-                }
+                onClick={() => navigate("/?auth=login&next=/dashboard")}
                 className="w-full bg-sky-600 text-white font-semibold py-3 rounded-xl hover:bg-sky-700 transition"
               >
                 Sign In
@@ -324,7 +322,7 @@ const Dashboard = ({ darkMode, onToggleTheme }: DashboardProps) => {
               <button
                 onClick={() => {
                   localStorage.removeItem("token");
-                  navigate("/ghumphir");
+                  navigate("/");
                 }}
                 className="w-full bg-red-600 text-white font-semibold py-3 rounded-xl hover:bg-red-700 transition"
               >

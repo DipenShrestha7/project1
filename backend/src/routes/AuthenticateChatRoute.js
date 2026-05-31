@@ -4,6 +4,10 @@ import UsersModel from "../models/UsersModel.js";
 import authHook from "../hooks/auth.js";
 
 function AuthenticateChatRoute(fastify) {
+  const aiServiceUrl = (
+    process.env.AI_SERVICE_URL || "http://localhost:8000"
+  ).replace(/\/$/, "");
+
   // POST /api/chat - Save a message and create session if needed
   fastify.post("/chat", { preHandler: authHook }, async (request, reply) => {
     const userId = Number(request.user?.user_id);
@@ -84,7 +88,7 @@ function AuthenticateChatRoute(fastify) {
       });
 
       // one call to Python — with history for context
-      const aiRes = await fetch("http://localhost:8000/chat", {
+      const aiRes = await fetch(`${aiServiceUrl}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),

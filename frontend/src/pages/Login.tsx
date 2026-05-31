@@ -109,7 +109,7 @@ const App = () => {
 
         localStorage.setItem("token", data.token);
         setNotice(null);
-        navigate("/ghumphir/dashboard");
+        navigate("/dashboard");
         return;
       }
 
@@ -171,7 +171,7 @@ const App = () => {
 
       localStorage.setItem("token", data.token);
       setNotice(null);
-      navigate("/ghumphir/dashboard");
+      navigate("/dashboard");
     } catch (error) {
       console.error("Google sign-in error:", error);
       setNotice({

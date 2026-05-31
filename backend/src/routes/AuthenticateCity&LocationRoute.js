@@ -6,6 +6,17 @@ import fs from "fs";
 import { pipeline } from "stream/promises";
 const normalize = (str) => str.trim().toLowerCase().replace(/\s+/g, "");
 
+const getPublicBackendUrl = () => {
+  const configuredUrl =
+    process.env.PUBLIC_BACKEND_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.WEBSITE_URL ||
+    process.env.BACKEND_URL ||
+    `http://localhost:${process.env.PORT || 9000}`;
+
+  return configuredUrl.replace(/\/$/, "");
+};
+
 const resolveLocalUploadPath = (imagePathOrUrl) => {
   if (!imagePathOrUrl || typeof imagePathOrUrl !== "string") return null;
 
@@ -342,7 +353,7 @@ function authenticateCityLocationRoutes(fastify) {
           const savePath = path.join(uploadDir, filename);
 
           await pipeline(part.file, fs.createWriteStream(savePath));
-          image_url = `http://localhost:9000/uploads/${relativeUrlBase}/${filename}`;
+          image_url = `${getPublicBackendUrl()}/uploads/${relativeUrlBase}/${filename}`;
         }
       }
 
@@ -438,7 +449,7 @@ function authenticateCityLocationRoutes(fastify) {
 
           await pipeline(part.file, fs.createWriteStream(savePath));
 
-          nextImageUrl = `http://localhost:9000/uploads/${relativeUrlBase}/${filename}`;
+          nextImageUrl = `${getPublicBackendUrl()}/uploads/${relativeUrlBase}/${filename}`;
         }
       }
 

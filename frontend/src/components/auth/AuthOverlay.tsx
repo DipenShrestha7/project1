@@ -22,7 +22,7 @@ type AuthOverlayProps = {
 const AuthOverlay = ({
   isOpen,
   initialMode = "login",
-  redirectTo = "/ghumphir/dashboard",
+  redirectTo = "/dashboard",
   onClose,
 }: AuthOverlayProps) => {
   const navigate = useNavigate();

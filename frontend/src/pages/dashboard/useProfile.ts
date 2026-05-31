@@ -127,7 +127,7 @@ export const useProfile = () => {
     if (!response.ok)
       throw new Error(data.message || "Failed to delete account");
     localStorage.removeItem("token");
-    navigate("/ghumphir");
+    navigate("/");
   };
 
   const handleSubmitReport = async (

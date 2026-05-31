@@ -9,11 +9,10 @@ import type {
   ReportStatus,
   UserReport,
 } from "./types";
+import { API_URL } from "../../config/api";
 
 export function useAdminPanel() {
-  const apiHost =
-    window.location.hostname === "127.0.0.1" ? "127.0.0.1" : "localhost";
-  const API_BASE = `http://${apiHost}:9000/api`;
+  const API_BASE = `${API_URL}/api`;
 
   const [cityName, setCityName] = useState("");
   const [cityDescription, setCityDescription] = useState("");

@@ -23,7 +23,7 @@ const HomeNavbar = ({
       }`}
     >
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-        <a href="/ghumphir" className="inline-flex items-center gap-2.5">
+        <a href="/" className="inline-flex items-center gap-2.5">
           <img
             src={logo}
             alt="Ghumphir logo"

@@ -34,7 +34,9 @@ const upsertLink = (selector: string, attrs: Record<string, string>) => {
 
 const SeoMeta = ({ title, description, canonicalPath }: SeoMetaProps) => {
   useEffect(() => {
-    const baseUrl = "http://localhost:5173";
+    const baseUrl =
+      import.meta.env.VITE_WEBSITE_URL?.replace(/\/$/, "") ||
+      window.location.origin;
     const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
     document.title = title;

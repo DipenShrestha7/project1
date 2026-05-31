@@ -27,7 +27,7 @@ const Home = ({ darkMode, onToggleTheme }: HomeProps) => {
     if (nextParam && nextParam.startsWith("/")) {
       return nextParam;
     }
-    return "/ghumphir/dashboard";
+    return "/dashboard";
   }, [nextParam]);
 
   const openAuth = (targetMode: "login" | "signup") => {
@@ -45,7 +45,7 @@ const Home = ({ darkMode, onToggleTheme }: HomeProps) => {
   const handleLoginToDashboard = () => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigate("/ghumphir/dashboard");
+      navigate("/dashboard");
       return;
     }
     openAuth("login");
@@ -62,7 +62,7 @@ const Home = ({ darkMode, onToggleTheme }: HomeProps) => {
       <SeoMeta
         title="Ghumphir | Nepal Travel Planner, Wishlist, and Journey Tracker"
         description="Explore Nepal destinations, save your wishlist, and track travel history with Ghumphir. Sign in with Google or email to unlock your personalized dashboard."
-        canonicalPath="/ghumphir"
+        canonicalPath="/"
       />
 
       <HomeNavbar
