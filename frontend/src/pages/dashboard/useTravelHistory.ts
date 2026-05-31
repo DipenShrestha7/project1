@@ -40,6 +40,10 @@ export const useTravelHistory = (userId?: number) => {
     }
   };
 
+  const clearLocationReviews = () => {
+    setLocationReviews([]);
+  };
+
   const loadTravelHistory = async (uid: number) => {
     try {
       const response = await fetch(`${API_URL}/api/history/${uid}`);
@@ -70,11 +74,6 @@ export const useTravelHistory = (userId?: number) => {
   useEffect(() => {
     if (userId) void loadTravelHistory(userId);
   }, [userId]);
-
-  useEffect(() => {
-    // keep location reviews reset when travelHistory changes
-    if (travelHistoryItems.length === 0) setLocationReviews([]);
-  }, [travelHistoryItems.length]);
 
   const toggleReviewSection = (locationId: number) => {
     const item = travelHistoryItems.find((e) => e.location_id === locationId);
@@ -220,6 +219,7 @@ export const useTravelHistory = (userId?: number) => {
     setConfirmDeleteReviewLocationId,
     locationReviews,
     loadLocationReviews,
+    clearLocationReviews,
     loadTravelHistory,
     toggleReviewSection,
     removeLocationFromTravelHistory,

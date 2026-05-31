@@ -132,6 +132,15 @@ export const useDashboardController = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (selectedLocation) {
+      void travel.loadLocationReviews(selectedLocation);
+      return;
+    }
+
+    travel.clearLocationReviews();
+  }, [selectedLocation, travel]);
+
   const syncHash = (
     section: ActiveSection,
     cityId: number | null = selectedCity,
