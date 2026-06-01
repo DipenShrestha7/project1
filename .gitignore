@@ -23,6 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 backend/uploads/users/
+backend/uploads/
 backend/.venv/
 __pycache__
 *.pyc

@@ -1,71 +1,27 @@
 import CitiesModel from "../models/CitiesModel.js";
 import LocationsModel from "../models/LocationsModel.js";
 import ImageModel from "../models/ImageModel.js";
-import path from "path";
-import fs from "fs";
-import { pipeline } from "stream/promises";
+import {
+  deleteImageFromCloudinary,
+  uploadImageToCloudinary,
+} from "../config/cloudinary.js";
 const normalize = (str) => str.trim().toLowerCase().replace(/\s+/g, "");
 
-const getPublicBackendUrl = () => {
-  const configuredUrl =
-    process.env.PUBLIC_BACKEND_URL ||
-    process.env.RENDER_EXTERNAL_URL ||
-    process.env.WEBSITE_URL ||
-    process.env.BACKEND_URL ||
-    `http://localhost:${process.env.PORT || 9000}`;
+const readStreamToBuffer = async (stream) => {
+  const chunks = [];
 
-  return configuredUrl.replace(/\/$/, "");
-};
-
-const resolveLocalUploadPath = (imagePathOrUrl) => {
-  if (!imagePathOrUrl || typeof imagePathOrUrl !== "string") return null;
-
-  let normalized = imagePathOrUrl;
-  try {
-    if (/^https?:\/\//i.test(imagePathOrUrl)) {
-      normalized = new URL(imagePathOrUrl).pathname;
-    }
-  } catch {
-    return null;
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
 
-  if (!normalized.startsWith("/uploads/")) return null;
-  const relative = normalized.replace(/^\/uploads\//, "");
-  return path.join(process.cwd(), "uploads", relative);
-};
-
-const removeLocalUploadIfExists = async (imagePathOrUrl) => {
-  const filePath = resolveLocalUploadPath(imagePathOrUrl);
-  if (!filePath) return;
-
-  try {
-    await fs.promises.unlink(filePath);
-  } catch (err) {
-    if (err.code !== "ENOENT") {
-      console.warn("Failed to delete old image file:", filePath, err.message);
-    }
-  }
+  return Buffer.concat(chunks);
 };
 
 const getLocationUploadTarget = async (location_id) => {
   const location = await LocationsModel.findOne({ where: { location_id } });
   if (!location) return null;
 
-  const cityFolder = `city_${location.city_id}`;
-  const locationFolder = `location_${location.location_id}`;
-  const uploadDir = path.join(
-    process.cwd(),
-    "uploads",
-    "locations",
-    cityFolder,
-    locationFolder,
-  );
-
-  return {
-    location,
-    uploadDir,
-    relativeUrlBase: `locations/${cityFolder}/${locationFolder}`,
-  };
+  return { location };
 };
 
 function authenticateCityLocationRoutes(fastify) {
@@ -321,53 +277,50 @@ function authenticateCityLocationRoutes(fastify) {
   fastify.post("/admin/image", async (req, reply) => {
     try {
       const parts = req.parts();
-      let location_id, image_url;
+      let location_id;
+      let image_url = null;
+      let image_key = null;
+      let imageBuffer = null;
 
       for await (const part of parts) {
         if (part.type === "field") {
           if (part.fieldname === "location_id") {
             location_id = part.value;
+          } else if (part.fieldname === "image_url") {
+            image_url = part.value?.trim() || null;
           }
         } else if (part.type === "file") {
-          if (!location_id) {
-            return reply.code(400).send({
-              message:
-                "location_id must be provided before the image file in multipart form data",
-            });
-          }
-
-          const uploadTarget = await getLocationUploadTarget(location_id);
-          if (!uploadTarget) {
-            return reply.code(404).send({ message: "Location not found" });
-          }
-
-          const { uploadDir, relativeUrlBase } = uploadTarget;
-          if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-          }
-
-          const uniqueSuffix =
-            Date.now() + "-" + Math.round(Math.random() * 1e9);
-          const ext = path.extname(part.filename) || ".jpg";
-          const filename = `${uniqueSuffix}${ext}`;
-          const savePath = path.join(uploadDir, filename);
-
-          await pipeline(part.file, fs.createWriteStream(savePath));
-          image_url = `${getPublicBackendUrl()}/uploads/${relativeUrlBase}/${filename}`;
+          imageBuffer = await readStreamToBuffer(part.file);
         }
-      }
-
-      if (!image_url) {
-        return reply.code(400).send({ message: "No image file uploaded" });
       }
 
       if (!location_id) {
         return reply.code(400).send({ message: "location_id is required" });
       }
 
+      const uploadTarget = await getLocationUploadTarget(location_id);
+      if (!uploadTarget) {
+        return reply.code(404).send({ message: "Location not found" });
+      }
+
+      if (imageBuffer) {
+        const uploaded = await uploadImageToCloudinary({
+          buffer: imageBuffer,
+          folder: "project1/locations",
+        });
+
+        image_url = uploaded.image_url;
+        image_key = uploaded.image_key;
+      }
+
+      if (!image_url) {
+        return reply.code(400).send({ message: "No image file uploaded" });
+      }
+
       const image = await ImageModel.create({
         location_id,
         image_url,
+        image_key,
       });
 
       return {
@@ -425,37 +378,56 @@ function authenticateCityLocationRoutes(fastify) {
 
       const parts = request.parts();
       let nextImageUrl = null;
+      let nextImageKey = null;
+      let nextImageBuffer = null;
 
       for await (const part of parts) {
+        if (part.type === "field" && part.fieldname === "image_url") {
+          nextImageUrl = part.value?.trim() || null;
+        }
+
         if (part.type === "file") {
-          const uploadTarget = await getLocationUploadTarget(
-            existingImage.location_id,
-          );
-          if (!uploadTarget) {
-            return reply
-              .code(404)
-              .send({ error: "Location linked to this image was not found" });
-          }
-
-          const { uploadDir, relativeUrlBase } = uploadTarget;
-          const uniqueSuffix =
-            Date.now() + "-" + Math.round(Math.random() * 1e9);
-          const ext = path.extname(part.filename) || ".jpg";
-          const filename = `${uniqueSuffix}${ext}`;
-          if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-          }
-          const savePath = path.join(uploadDir, filename);
-
-          await pipeline(part.file, fs.createWriteStream(savePath));
-
-          nextImageUrl = `${getPublicBackendUrl()}/uploads/${relativeUrlBase}/${filename}`;
+          nextImageBuffer = await readStreamToBuffer(part.file);
         }
       }
 
       const updateData = {};
+
+      if (nextImageBuffer) {
+        if (existingImage.image_key) {
+          try {
+            await deleteImageFromCloudinary(existingImage.image_key);
+          } catch (deleteError) {
+            console.warn(
+              "Failed to delete old Cloudinary image:",
+              deleteError?.message || deleteError,
+            );
+          }
+        }
+
+        const uploaded = await uploadImageToCloudinary({
+          buffer: nextImageBuffer,
+          folder: "project1/locations",
+        });
+
+        nextImageUrl = uploaded.image_url;
+        nextImageKey = uploaded.image_key;
+      }
+
+      if (nextImageUrl && !nextImageBuffer && existingImage.image_key) {
+        try {
+          await deleteImageFromCloudinary(existingImage.image_key);
+        } catch (deleteError) {
+          console.warn(
+            "Failed to delete old Cloudinary image:",
+            deleteError?.message || deleteError,
+          );
+        }
+      }
+
       if (nextImageUrl) {
         updateData.image_url = nextImageUrl;
+        updateData.image_key = nextImageKey;
       }
 
       if (!updateData.image_url) {
@@ -467,10 +439,6 @@ function authenticateCityLocationRoutes(fastify) {
       const updated_image = await ImageModel.update(updateData, {
         where: { image_id },
       });
-
-      if (existingImage.image_url !== updateData.image_url) {
-        await removeLocalUploadIfExists(existingImage.image_url);
-      }
 
       return {
         message: "Image Updated Successfully",
@@ -491,11 +459,18 @@ function authenticateCityLocationRoutes(fastify) {
         return reply.code(404).send({ message: "Image not found" });
       }
 
-      const removed_image = await ImageModel.destroy({ where: { image_id } });
-
-      if (removed_image) {
-        await removeLocalUploadIfExists(image.image_url);
+      if (image.image_key) {
+        try {
+          await deleteImageFromCloudinary(image.image_key);
+        } catch (deleteError) {
+          console.warn(
+            "Failed to delete Cloudinary image before DB delete:",
+            deleteError?.message || deleteError,
+          );
+        }
       }
+
+      const removed_image = await ImageModel.destroy({ where: { image_id } });
 
       return { removed_image };
     } catch (err) {

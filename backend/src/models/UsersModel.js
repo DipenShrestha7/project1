@@ -30,6 +30,10 @@ const UsersModel = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    profile_image_key: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     timestamps: false,

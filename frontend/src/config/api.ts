@@ -1,20 +1,5 @@
 export const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
 
-const rewriteLocalBackendUrl = (value: string) => {
-  if (!API_URL) return value;
-
-  try {
-    const parsed = new URL(value);
-    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
-      return `${API_URL}${parsed.pathname}${parsed.search}${parsed.hash}`;
-    }
-  } catch {
-    return value;
-  }
-
-  return value;
-};
-
 export const getImageUrl = (path?: string | null) => {
   if (!path) return "";
 
@@ -24,7 +9,7 @@ export const getImageUrl = (path?: string | null) => {
     path.startsWith("data:") ||
     path.startsWith("blob:")
   ) {
-    return rewriteLocalBackendUrl(path);
+    return path;
   }
 
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;

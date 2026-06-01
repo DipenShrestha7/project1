@@ -7,40 +7,21 @@ import UserReportsModel from "../models/UserReportsModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
-import path from "path";
-import fs from "fs";
-import { pipeline } from "stream/promises";
 import sequelize from "../config/db.js";
+import {
+  deleteImageFromCloudinary,
+  uploadImageToCloudinary,
+} from "../config/cloudinary.js";
 
 function authenticateUsersRoute(fastify) {
-  const resolveLocalUploadPath = (imagePathOrUrl) => {
-    if (!imagePathOrUrl || typeof imagePathOrUrl !== "string") return null;
+  const readStreamToBuffer = async (stream) => {
+    const chunks = [];
 
-    let normalized = imagePathOrUrl;
-    try {
-      if (/^https?:\/\//i.test(imagePathOrUrl)) {
-        normalized = new URL(imagePathOrUrl).pathname;
-      }
-    } catch {
-      return null;
+    for await (const chunk of stream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
 
-    if (!normalized.startsWith("/uploads/")) return null;
-    const relative = normalized.replace(/^\/uploads\//, "");
-    return path.join(process.cwd(), "uploads", relative);
-  };
-
-  const removeLocalUploadIfExists = async (imagePathOrUrl) => {
-    const filePath = resolveLocalUploadPath(imagePathOrUrl);
-    if (!filePath) return;
-
-    try {
-      await fs.promises.unlink(filePath);
-    } catch (err) {
-      if (err.code !== "ENOENT") {
-        fastify.log.warn({ err, filePath }, "Failed to delete old image file");
-      }
-    }
+    return Buffer.concat(chunks);
   };
 
   const getUserIdFromAuthHeader = (authHeader) => {
@@ -180,31 +161,35 @@ function authenticateUsersRoute(fastify) {
         return reply.code(400).send({ message: "No image file uploaded" });
       }
 
-      const userFolder = path.join(
-        process.cwd(),
-        "uploads",
-        "users",
-        `user_${userId}`,
-      );
-      await fs.promises.mkdir(userFolder, { recursive: true });
+      const buffer = await readStreamToBuffer(data.file);
+      const uploaded = await uploadImageToCloudinary({
+        buffer,
+        folder: "project1/users",
+      });
 
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      const ext = path.extname(data.filename || "") || ".jpg";
-      const filename = `${uniqueSuffix}${ext}`;
-      const uploadPath = path.join(userFolder, filename);
+      if (user.profile_image_key) {
+        try {
+          await deleteImageFromCloudinary(user.profile_image_key);
+        } catch (deleteError) {
+          fastify.log.warn(
+            { err: deleteError, imageKey: user.profile_image_key },
+            "Failed to delete previous Cloudinary profile image",
+          );
+        }
+      }
 
-      await pipeline(data.file, fs.createWriteStream(uploadPath));
-
-      const profileImagePath = `/uploads/users/user_${userId}/${filename}`;
       await UsersModel.update(
-        { profile_image: profileImagePath },
+        {
+          profile_image: uploaded.image_url,
+          profile_image_key: uploaded.image_key,
+        },
         { where: { user_id: userId } },
       );
 
-      await removeLocalUploadIfExists(user.profile_image);
-
       return {
         message: "Image added successfully",
+        profile_image: uploaded.image_url,
+        profile_image_key: uploaded.image_key,
       };
     } catch (err) {
       console.error(err);
@@ -236,15 +221,21 @@ function authenticateUsersRoute(fastify) {
         return reply.code(404).send({ error: "User not found" });
       }
 
-      // Update user profile image
+      if (user.profile_image_key) {
+        try {
+          await deleteImageFromCloudinary(user.profile_image_key);
+        } catch (deleteError) {
+          fastify.log.warn(
+            { err: deleteError, imageKey: user.profile_image_key },
+            "Failed to delete previous Cloudinary profile image",
+          );
+        }
+      }
+
       await UsersModel.update(
-        { profile_image },
+        { profile_image, profile_image_key: null },
         { where: { user_id: userId } },
       );
-
-      if (user.profile_image !== profile_image) {
-        await removeLocalUploadIfExists(user.profile_image);
-      }
 
       return {
         message: "Profile image updated successfully",
@@ -274,34 +265,35 @@ function authenticateUsersRoute(fastify) {
         return reply.code(400).send({ message: "No image file uploaded" });
       }
 
-      const userFolder = path.join(
-        process.cwd(),
-        "uploads",
-        "users",
-        `user_${userId}`,
-      );
-      await fs.promises.mkdir(userFolder, { recursive: true });
+      const buffer = await readStreamToBuffer(data.file);
+      const uploaded = await uploadImageToCloudinary({
+        buffer,
+        folder: "project1/users",
+      });
 
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      const ext = path.extname(data.filename || "") || ".jpg";
-      const filename = `${uniqueSuffix}${ext}`;
-      const uploadPath = path.join(userFolder, filename);
+      if (user.profile_image_key) {
+        try {
+          await deleteImageFromCloudinary(user.profile_image_key);
+        } catch (deleteError) {
+          fastify.log.warn(
+            { err: deleteError, imageKey: user.profile_image_key },
+            "Failed to delete previous Cloudinary profile image",
+          );
+        }
+      }
 
-      await pipeline(data.file, fs.createWriteStream(uploadPath));
-
-      const profileImagePath = `/uploads/users/user_${userId}/${filename}`;
-
-      // Update user profile image
       await UsersModel.update(
-        { profile_image: profileImagePath },
+        {
+          profile_image: uploaded.image_url,
+          profile_image_key: uploaded.image_key,
+        },
         { where: { user_id: userId } },
       );
 
-      await removeLocalUploadIfExists(user.profile_image);
-
       return {
         message: "Profile image updated successfully",
-        profile_image: profileImagePath,
+        profile_image: uploaded.image_url,
+        profile_image_key: uploaded.image_key,
       };
     } catch (err) {
       console.error(err);
