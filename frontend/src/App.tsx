@@ -59,7 +59,7 @@ function App() {
         path="/dashboard"
         element={<Dashboard darkMode={darkMode} onToggleTheme={toggleTheme} />}
       />
-      <Route path="/admin" element={<Admin />} />
+      {/* <Route path="/admin" element={<Admin />} /> */}
     </Routes>
   );
 }
