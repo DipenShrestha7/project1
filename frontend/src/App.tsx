@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard.tsx";
 // import Admin from "./pages/Admin.tsx";
 import Home from "./pages/Home.tsx";
+import NotFound from "./pages/NotFound.tsx";
 
 function App() {
   const [hasUserThemePreference, setHasUserThemePreference] = useState(() => {
@@ -60,6 +61,7 @@ function App() {
         element={<Dashboard darkMode={darkMode} onToggleTheme={toggleTheme} />}
       />
       {/* <Route path="/admin" element={<Admin />} /> */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
